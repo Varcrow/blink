@@ -6,7 +6,6 @@
 #include <print>
 #include <string>
 
-
 namespace stfm {
 
 int Run() {

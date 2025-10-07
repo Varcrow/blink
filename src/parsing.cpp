@@ -2,10 +2,17 @@
 
 #include "operations.h"
 
+#include <expected>
 #include <print>
+#include <sstream>
 #include <vector>
 
-namespace stfm::parsing {
+// FIND A BETTER PLACE FOR THESE :'(
+using Arg = std::string;
+using ArgPair = std::pair<std::string, std::string>;
+using Error = std::string;
+
+namespace {
 
 std::expected<Arg, Error> ParseArg(std::istringstream& iss) {
     Arg arg;
@@ -25,6 +32,10 @@ std::expected<ArgPair, Error> ParseArgPair(std::istringstream& iss) {
     }
     return std::make_pair(arg1, arg2);
 }
+
+} // namespace
+
+namespace stfm::parsing {
 
 /*
     And so all of my bullshit error checking begins here
