@@ -1,34 +1,32 @@
 #include "parsing.h"
 
-#include "operations.h"
+#include "error.h"
+#include "operations/make.h"
+#include "operations/remove.h"
 
-#include <expected>
-#include <print>
 #include <sstream>
 #include <vector>
 
-// FIND A BETTER PLACE FOR THESE :'(
-using Arg = std::string;
-using ArgPair = std::pair<std::string, std::string>;
-using Error = std::string;
-
 namespace {
 
-std::expected<Arg, Error> ParseArg(std::istringstream& iss) {
+using Arg = std::string;
+using ArgPair = std::pair<std::string, std::string>;
+
+std::expected<Arg, stfm::Error> ParseArg(std::istringstream& iss) {
     Arg arg;
     if (!(iss >> arg)) {
-        return std::unexpected<Error>("Missing argument");
+        return std::unexpected(stfm::Error::MissingArgs);
     }
     return arg;
 }
 
-std::expected<ArgPair, Error> ParseArgPair(std::istringstream& iss) {
+std::expected<ArgPair, stfm::Error> ParseArgPair(std::istringstream& iss) {
     std::string arg1, arg2;
     if (!(iss >> arg1)) {
-        return std::unexpected<Error>("Missing first arg");
+        return std::unexpected(stfm::Error::MissingArgs);
     }
     if (!(iss >> arg2)) {
-        return std::unexpected<Error>("Missing second arg");
+        return std::unexpected(stfm::Error::MissingArgs);
     }
     return std::make_pair(arg1, arg2);
 }
@@ -37,43 +35,34 @@ std::expected<ArgPair, Error> ParseArgPair(std::istringstream& iss) {
 
 namespace stfm::parsing {
 
-/*
-    And so all of my bullshit error checking begins here
-    everything in lower levels returns a string to get pushed
-    into a log and will be very fun to update in the future
-*/
 bool ParseInput(const std::string& input) {
     std::string token;
     std::istringstream iss(input);
-    std::vector<std::string> log;
+    // this vector is here to remind me that I actually need to do something with these soon:)
+    std::vector<stfm::Error> errors;
     while (iss >> token) {
         if (token == "q") {
             return false;
         } else if (token == "m") {
             if (auto argPair = ParseArgPair(iss)) {
-                log.push_back(operations::Make(argPair->first, argPair->second));
+                auto result = operations::Make(argPair->first, argPair->second);
+                if (!result) {
+                    errors.push_back(result.error());
+                }
             } else {
-                log.push_back(argPair.error());
+                errors.push_back(argPair.error());
             }
-        } else if (token == "d") {
-            if (auto arg = ParseArg(iss)) {
-                log.push_back(operations::Delete(*arg));
-            } else {
-                log.push_back(arg.error());
-            }
-        } else if (token == "l") {
-            log.push_back(operations::List());
         } else if (token == "r") {
-            // rename
-        } else if (token == "c") {
-            // copy
+            if (auto arg = ParseArg(iss)) {
+                auto result = operations::Remove(*arg);
+                if (!result) {
+                    errors.push_back(result.error());
+                }
+            } else {
+                errors.push_back(arg.error());
+            }
         } else {
-            log.push_back("Command " + token + " not recognized");
         }
-    }
-
-    for (auto& message : log) {
-        std::println("[log]> {}", message);
     }
 
     return true;

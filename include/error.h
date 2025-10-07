@@ -1,6 +1,6 @@
 #pragma once
 
-namespace stfm::error {
+namespace stfm {
 
 enum class Error {
     None,
@@ -11,4 +11,4 @@ enum class Error {
     DirExists,
 };
 
-} // namespace stfm::error
+} // namespace stfm
