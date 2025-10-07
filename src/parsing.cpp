@@ -26,6 +26,11 @@ std::expected<ArgPair, Error> ParseArgPair(std::istringstream& iss) {
     return std::make_pair(arg1, arg2);
 }
 
+/*
+    And so all of my bullshit error checking begins here
+    everything in lower levels returns a string to get pushed
+    into a log and will be very fun to update in the future
+*/
 bool ParseInput(const std::string& input) {
     std::string token;
     std::istringstream iss(input);
@@ -40,9 +45,13 @@ bool ParseInput(const std::string& input) {
                 log.push_back(argPair.error());
             }
         } else if (token == "d") {
-            // delete
+            if (auto arg = ParseArg(iss)) {
+                log.push_back(operations::Delete(*arg));
+            } else {
+                log.push_back(arg.error());
+            }
         } else if (token == "l") {
-            // list
+            log.push_back(operations::List());
         } else if (token == "r") {
             // rename
         } else if (token == "c") {
@@ -58,4 +67,5 @@ bool ParseInput(const std::string& input) {
 
     return true;
 }
+
 } // namespace stfm::parsing

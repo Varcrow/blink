@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <print>
 
 namespace {
 
@@ -39,6 +40,22 @@ std::string Make(const std::string& type, const std::string& name) {
         return MakeDirectory(name);
     }
     return "Unrecognized type " + type;
+}
+
+std::string Delete(const std::string& path) {
+    if (fs::remove(path)) {
+        return "Deleted " + path;
+    }
+    return "Failed to delete " + path;
+}
+
+// temporary linux style list
+std::string List() {
+    std::string list;
+    for (auto& entry : fs::directory_iterator(fs::current_path())) {
+        list.append(entry.path().string());
+    }
+    return list;
 }
 
 } // namespace stfm::operations
