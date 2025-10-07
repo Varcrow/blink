@@ -6,4 +6,10 @@ target_sources(stfm_lib PUBLIC
         remove.cppm
         make.cppm
         error.cppm
+        gui.cppm
+)
+target_link_libraries(stfm_lib
+  PRIVATE ftxui::screen
+  PRIVATE ftxui::dom
+  PRIVATE ftxui::component
 )

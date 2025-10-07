@@ -1,5 +1,5 @@
 export module stfm;
-import parsing;
+import stfm.parsing;
 import std;
 
 namespace stfm {

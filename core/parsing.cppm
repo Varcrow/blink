@@ -1,10 +1,10 @@
-export module parsing;
-import error;
-import make;
-import remove;
+export module stfm.parsing;
+import stfm.error;
+import stfm.make;
+import stfm.remove;
 import std;
 
-namespace {
+namespace stfm::parsing {
 
 using Arg = std::string;
 using ArgPair = std::pair<std::string, std::string>;
@@ -27,10 +27,6 @@ std::expected<ArgPair, stfm::Error> ParseArgPair(std::istringstream& iss) {
     }
     return std::make_pair(arg1, arg2);
 }
-
-} // namespace
-
-namespace stfm::parsing {
 
 export bool ParseInput(const std::string& input) {
     std::string token;

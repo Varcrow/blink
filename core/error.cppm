@@ -1,4 +1,4 @@
-export module error;
+export module stfm.error;
 
 namespace stfm {
 

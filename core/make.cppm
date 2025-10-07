@@ -1,8 +1,8 @@
-export module make;
-import error;
+export module stfm.make;
+import stfm.error;
 import std;
 
-namespace {
+namespace stfm::operations {
 
 namespace fs = std::filesystem;
 
@@ -20,11 +20,6 @@ std::expected<void, stfm::Error> MakeDirectory(const std::string& name) {
     }
     return {};
 }
-
-} // namespace
-
-namespace stfm::operations {
-
 export std::expected<void, stfm::Error> Make(const std::string& type, const std::string& name) {
     if (type == "f") {
         return MakeFile(name);

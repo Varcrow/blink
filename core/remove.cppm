@@ -1,5 +1,5 @@
-export module remove;
-import error;
+export module stfm.remove;
+import stfm.error;
 import std;
 
 namespace stfm::operations {
