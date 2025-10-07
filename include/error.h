@@ -2,19 +2,13 @@
 
 namespace stfm::error {
 
-enum class Command {
-    M,
-    D,
-    R,
-    C,
-    L,
-};
-
 enum class Error {
+    None,
     IncorrectArgs,
     MissingArgs,
     Failed,
-    PathExists,
+    FileExists,
+    DirExists,
 };
 
 } // namespace stfm::error
