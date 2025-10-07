@@ -1,4 +1,4 @@
-#include "stfm.h"
+import stfm;
 
 int main() {
     return stfm::Run();

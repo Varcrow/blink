@@ -1,14 +1,10 @@
-#include "stfm.h"
-
-#include "parsing.h"
-
-#include <iostream>
-#include <print>
-#include <string>
+export module stfm;
+import parsing;
+import std;
 
 namespace stfm {
 
-int Run() {
+export int Run() {
     bool running = true;
     while (running) {
         std::print("[stfm]> ");

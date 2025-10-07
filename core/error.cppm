@@ -1,8 +1,8 @@
-#pragma once
+export module error;
 
 namespace stfm {
 
-enum class Error {
+export enum class Error {
     None,
     IncorrectArgs,
     MissingArgs,

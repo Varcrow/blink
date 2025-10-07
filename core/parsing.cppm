@@ -1,11 +1,8 @@
-#include "parsing.h"
-
-#include "error.h"
-#include "operations/make.h"
-#include "operations/remove.h"
-
-#include <sstream>
-#include <vector>
+export module parsing;
+import error;
+import make;
+import remove;
+import std;
 
 namespace {
 
@@ -35,7 +32,7 @@ std::expected<ArgPair, stfm::Error> ParseArgPair(std::istringstream& iss) {
 
 namespace stfm::parsing {
 
-bool ParseInput(const std::string& input) {
+export bool ParseInput(const std::string& input) {
     std::string token;
     std::istringstream iss(input);
     // this vector is here to remind me that I actually need to do something with these soon:)

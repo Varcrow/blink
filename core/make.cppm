@@ -1,10 +1,6 @@
-#include "operations/make.h"
-
-#include "error.h"
-
-#include <expected>
-#include <filesystem>
-#include <fstream>
+export module make;
+import error;
+import std;
 
 namespace {
 
@@ -29,7 +25,7 @@ std::expected<void, stfm::Error> MakeDirectory(const std::string& name) {
 
 namespace stfm::operations {
 
-std::expected<void, stfm::Error> Make(const std::string& type, const std::string& name) {
+export std::expected<void, stfm::Error> Make(const std::string& type, const std::string& name) {
     if (type == "f") {
         return MakeFile(name);
     } else if (type == "d") {
