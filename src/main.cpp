@@ -1,3 +1,5 @@
 #include "stfm.h"
 
-int main() { return stfm::Run(); };
+int main() {
+    return stfm::Run();
+};

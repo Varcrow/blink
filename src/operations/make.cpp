@@ -11,9 +11,6 @@ namespace {
 namespace fs = std::filesystem;
 
 std::expected<void, stfm::Error> MakeFile(const std::string& name) {
-    if (fs::exists(name)) {
-        return std::unexpected(stfm::Error::FileExists);
-    }
     std::ofstream file(name);
     if (!file) {
         return std::unexpected(stfm::Error::Failed);
@@ -22,10 +19,7 @@ std::expected<void, stfm::Error> MakeFile(const std::string& name) {
 }
 
 std::expected<void, stfm::Error> MakeDirectory(const std::string& name) {
-    if (fs::exists(name)) {
-        return std::unexpected(stfm::Error::DirExists);
-    }
-    if (!fs::create_directory(name)) {
+    if (!fs::create_directories(name)) {
         return std::unexpected(stfm::Error::Failed);
     }
     return {};
