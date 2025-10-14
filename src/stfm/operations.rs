@@ -1,17 +1,14 @@
+use std::path::PathBuf;
 use std::{fs, fs::File};
-use std::env;
-use std::io;
 
-pub fn get_all_entries_in_cwd() -> io::Result<Vec<String>> {
-    let current_dir = env::current_dir()?;
-    let entries = fs::read_dir(current_dir)?;
-    let all_entries = entries
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            entry.file_name().to_str().map(|s| s.to_owned())
-        })
-        .collect();
-    Ok(all_entries)
+pub fn get_entries_in_path(path: &PathBuf) -> Vec<String> {
+    match fs::read_dir(path) {
+        Ok(entries) => entries
+            .filter_map(|entry| entry.ok())
+            .filter_map(|entry| entry.path().to_str().map(|s| s.to_string()))
+            .collect(),
+        Err(_) => Vec::new(), // Return empty Vec if unable to read directory
+    }
 }
 
 pub fn execute_make(t: &str, name: &str) {
