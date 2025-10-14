@@ -41,7 +41,8 @@ impl Default for App {
 }
 
 impl App {
-    pub fn run(mut self, terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
+    pub fn run(mut self) -> color_eyre::Result<()> {
+        let mut terminal = ratatui::init();
         while self.running {
             terminal.draw(|frame| self.render(frame))?;
 
@@ -52,6 +53,7 @@ impl App {
                 }
             }
         }
+        ratatui::restore();
         Ok(())
     }
 
