@@ -9,7 +9,6 @@ use ratatui::style::Style;
 use ratatui::widgets::List;
 use ratatui::widgets::ListItem;
 use ratatui::widgets::Paragraph;
-use ratatui::DefaultTerminal;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},

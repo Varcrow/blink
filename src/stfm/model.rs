@@ -1,7 +1,11 @@
+#[derive(Debug, Default)]
+pub struct Model {
+    pub running_state: RunningState,
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
-pub enum  ModelState {
+pub enum RunningState {
     #[default]
-    Running, 
-    Complete,
-    Quit,
+    Running,
+    Done,
 }
