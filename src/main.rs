@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::stfm::message::Message;
 use crate::stfm::model::{Model, RunningState};
-use crate::stfm::operations::get_entries_in_path;
+use std::fs;
 
 mod stfm;
 
@@ -18,15 +18,6 @@ fn main() -> color_eyre::Result<()> {
     // Init
     let mut terminal = ratatui::init();
     let mut model = Model::default();
-
-    let current_dir = std::env::current_dir().expect("Failed to get current directory");
-    let parent_dir = current_dir
-        .parent()
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| current_dir.clone());
-
-    model.directories.push(get_entries_in_path(&parent_dir));
-    model.directories.push(get_entries_in_path(&current_dir));
 
     // Loop
     while model.running_state != RunningState::Done {

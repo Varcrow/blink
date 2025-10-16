@@ -1,14 +1,9 @@
 use std::path::PathBuf;
 use std::{fs, fs::File};
 
+use color_eyre::eyre::Ok;
+
 pub fn get_entries_in_path(path: &PathBuf) -> Vec<String> {
-    match fs::read_dir(path) {
-        Ok(entries) => entries
-            .filter_map(|entry| entry.ok())
-            .filter_map(|entry| entry.path().to_str().map(|s| s.to_string()))
-            .collect(),
-        Err(_) => Vec::new(), // Return empty Vec if unable to read directory
-    }
 }
 
 pub fn execute_make(t: &str, name: &str) {
