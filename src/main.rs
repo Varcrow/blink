@@ -11,14 +11,13 @@ use ratatui::{
 
 use crate::stfm::message::Message;
 use crate::stfm::model::{Model, RunningState};
-use crate::stfm::entries::get_entries;
 
 mod stfm;
 
 fn main() -> color_eyre::Result<()> {
     // Init
     let mut terminal = ratatui::init();
-    let mut model = Model::default();
+    let mut model = Model::new(current_dir()?);
 
     // Loop
     while model.running_state != RunningState::Done {

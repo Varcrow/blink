@@ -1,4 +1,4 @@
-use std::{io, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::stfm::entries::{get_entries, FileEntry};
 
@@ -32,6 +32,7 @@ impl Model {
     pub fn update_cwd_entries(&mut self) {
         self.cwd_entries = get_entries(self.current_dir.as_path()).unwrap();
     }
+
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
