@@ -1,7 +1,13 @@
 use crate::stfm::model::{Model, RunningState};
 use color_eyre::eyre::Ok;
 use ratatui::{
-    crossterm::event::{self, Event, KeyCode, KeyEventKind}, layout::{Constraint, Layout}, style::{Color, Modifier, Style}, symbols::border, text::{Line, Span}, widgets::{Block, Borders, List, ListItem}, Frame
+    Frame,
+    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    layout::{Constraint, Layout},
+    style::{Color, Modifier, Style},
+    symbols::border,
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem},
 };
 use std::{env::current_dir, time::Duration};
 
@@ -116,7 +122,7 @@ fn view(model: &mut Model, frame: &mut Frame) {
     let parent_list = List::new(items).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!("{}", model.current_dir.parent().unwrap().display())),
+            .title(format!("{}", model.current_dir.parent().map(|p| p.display().to_string()).unwrap_or_else(|| "Root".to_string()))),
     );
 
     // Render lists

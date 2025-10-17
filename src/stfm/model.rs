@@ -2,6 +2,13 @@ use crate::stfm::entries::{FileEntry, get_entries};
 use ratatui::widgets::ListState;
 use std::path::PathBuf;
 
+#[derive(Debug, Default, PartialEq, Eq)]
+pub enum RunningState {
+    #[default]
+    Running,
+    Done,
+}
+
 #[derive(Debug, Default)]
 pub struct Model {
     pub running_state: RunningState,
@@ -20,13 +27,11 @@ impl Model {
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
         };
-
         model.update_all_entries();
-
         model
     }
 
-    pub fn update_current_dir(&mut self, path: PathBuf) {
+    pub fn update_cwd(&mut self, path: PathBuf) {
         self.current_dir = path;
         self.update_all_entries();
     }
@@ -36,8 +41,11 @@ impl Model {
     }
 
     pub fn update_parent_dir_entries(&mut self) {
-        self.parent_dir_entries =
-            get_entries(self.current_dir.as_path().parent().unwrap()).unwrap();
+        if let Some(parent) = self.current_dir.parent() {
+            self.parent_dir_entries = get_entries(parent).unwrap();
+        } else {
+            self.parent_dir_entries.clear();
+        }
     }
 
     pub fn update_all_entries(&mut self) {
@@ -77,7 +85,7 @@ impl Model {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 if entry.is_dir {
-                    self.update_current_dir(entry.path.clone());
+                    self.update_cwd(entry.path.clone());
                     self.list_state.select(Some(0));
                 }
             }
@@ -86,14 +94,7 @@ impl Model {
 
     pub fn up_dir_level(&mut self) {
         if self.current_dir.parent().is_some() {
-            self.update_current_dir(self.current_dir.parent().unwrap().to_path_buf());
+            self.update_cwd(self.current_dir.parent().unwrap().to_path_buf());
         }
     }
-}
-
-#[derive(Debug, Default, PartialEq, Eq)]
-pub enum RunningState {
-    #[default]
-    Running,
-    Done,
 }
