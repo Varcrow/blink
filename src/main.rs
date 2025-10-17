@@ -1,16 +1,17 @@
+use std::env::current_dir;
+
 use color_eyre::eyre::Ok;
 use ratatui::{
     Frame,
     crossterm::event::{self, Event, KeyCode},
     layout::{Constraint, Layout},
-    style::{Modifier, Style},
     symbols::border,
-    widgets::{Block, List, ListItem},
+    widgets::Block,
 };
 
 use crate::stfm::message::Message;
 use crate::stfm::model::{Model, RunningState};
-use std::fs;
+use crate::stfm::entries::get_entries;
 
 mod stfm;
 
@@ -73,24 +74,4 @@ fn view(model: &Model, frame: &mut Frame) {
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[0]);
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[1]);
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[2]);
-
-    // List logic
-    let upper_path = model.directories[0]
-        .iter()
-        .map(|i| ListItem::new(i.clone()))
-        .collect::<Vec<ListItem>>();
-
-    let current_path = model.directories[0]
-        .iter()
-        .map(|i| ListItem::new(i.clone()))
-        .collect::<Vec<ListItem>>();
-
-    let upper_list = List::new(upper_path).block(Block::bordered().border_set(border::ROUNDED));
-    let current_list = List::new(current_path)
-        .block(Block::bordered().border_set(border::ROUNDED))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-        .highlight_symbol(">> ");
-
-    frame.render_widget(upper_list, layout[0]);
-    frame.render_widget(current_list, layout[1]);
 }
