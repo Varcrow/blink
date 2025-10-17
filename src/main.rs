@@ -2,11 +2,7 @@ use std::env::current_dir;
 
 use color_eyre::eyre::Ok;
 use ratatui::{
-    Frame,
-    crossterm::event::{self, Event, KeyCode},
-    layout::{Constraint, Layout},
-    symbols::border,
-    widgets::Block,
+    crossterm::event::{self, Event, KeyCode}, layout::{Constraint, Layout}, style::{Color, Modifier, Style}, symbols::border, text::{Line, Span}, widgets::{Block, Borders, List, ListItem}, Frame
 };
 
 use crate::stfm::message::Message;
@@ -21,7 +17,7 @@ fn main() -> color_eyre::Result<()> {
 
     // Loop
     while model.running_state != RunningState::Done {
-        terminal.draw(|frame| view(&model, frame))?;
+        terminal.draw(|frame| view(&mut model, frame))?;
         let mut current_message = handle_event()?;
         while current_message.is_some() {
             current_message = update(&mut model, current_message.unwrap());
@@ -62,7 +58,8 @@ fn update(model: &mut Model, message: Message) -> Option<Message> {
 }
 
 // Render func
-fn view(model: &Model, frame: &mut Frame) {
+fn view(model: &mut Model, frame: &mut Frame) {
+    // Three sections of layout: Parent | Current | Preview
     let layout = Layout::horizontal([
         Constraint::Fill(3),
         Constraint::Fill(4),
@@ -70,7 +67,45 @@ fn view(model: &Model, frame: &mut Frame) {
     ])
     .split(frame.area());
 
+    // Three borders, one for each section
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[0]);
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[1]);
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[2]);
+
+    //Make the required list items
+    let items: Vec<ListItem> = model 
+        .cwd_entries
+        .iter()
+        .map(|entry| {
+            let icon = if entry.is_dir { "📁" } else { "📄" };
+            let style = if entry.is_dir {
+                Style::default().fg(Color::Cyan)
+            } else {
+                Style::default()
+            };
+
+            let line = Line::from(vec![
+                Span::raw(format!("{} ", icon)),
+                Span::styled(&entry.name, style),
+            ]);
+
+            ListItem::new(line)
+        })
+        .collect();
+
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(" {} ", model.current_dir.display())),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
+    
+    // Render list
+    frame.render_widget(list, layout[1]);
 }

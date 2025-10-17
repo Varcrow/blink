@@ -18,9 +18,8 @@ impl Model {
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
         };
-
-        model.cwd_entries = get_entries(model.current_dir.as_path()).unwrap();
-        model.parent_dir_entries = get_entries(model.current_dir.as_path()).unwrap();
+        
+        model.update_all_entries();
 
         model
     }
@@ -31,6 +30,15 @@ impl Model {
 
     pub fn update_cwd_entries(&mut self) {
         self.cwd_entries = get_entries(self.current_dir.as_path()).unwrap();
+    }
+
+    pub fn update_parent_dir_entries(&mut self) {
+        self.parent_dir_entries = get_entries(self.current_dir.as_path().parent().unwrap()).unwrap();
+    }
+
+    pub fn update_all_entries(&mut self) {
+        self.update_cwd_entries(); 
+        self.update_parent_dir_entries();
     }
 
 }
