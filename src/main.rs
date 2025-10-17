@@ -119,11 +119,15 @@ fn view(model: &mut Model, frame: &mut Frame) {
         })
         .collect();
 
-    let parent_list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!("{}", model.current_dir.parent().map(|p| p.display().to_string()).unwrap_or_else(|| "Root".to_string()))),
-    );
+    let parent_list =
+        List::new(items).block(Block::default().borders(Borders::ALL).title(format!(
+            "{}",
+            model
+                .current_dir
+                .parent()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| "Root".to_string())
+        )));
 
     // Render lists
     frame.render_widget(parent_list, layout[0]);
