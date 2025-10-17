@@ -1,12 +1,16 @@
-use std::env::current_dir;
-
-use color_eyre::eyre::Ok;
-use ratatui::{
-    crossterm::event::{self, Event, KeyCode}, layout::{Constraint, Layout}, style::{Color, Modifier, Style}, symbols::border, text::{Line, Span}, widgets::{Block, Borders, List, ListItem}, Frame
-};
-
 use crate::stfm::message::Message;
 use crate::stfm::model::{Model, RunningState};
+use color_eyre::eyre::Ok;
+use ratatui::{
+    Frame,
+    crossterm::event::{self, Event, KeyCode},
+    layout::{Constraint, Layout},
+    style::{Color, Modifier, Style},
+    symbols::border,
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem},
+};
+use std::env::current_dir;
 
 mod stfm;
 
@@ -68,12 +72,10 @@ fn view(model: &mut Model, frame: &mut Frame) {
     .split(frame.area());
 
     // Three borders, one for each section
-    frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[0]);
-    frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[1]);
     frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[2]);
 
-    //Make the required list items
-    let items: Vec<ListItem> = model 
+    //Make the cwd list
+    let items: Vec<ListItem> = model
         .cwd_entries
         .iter()
         .map(|entry| {
@@ -93,7 +95,7 @@ fn view(model: &mut Model, frame: &mut Frame) {
         })
         .collect();
 
-    let list = List::new(items)
+    let cwd_list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -105,7 +107,35 @@ fn view(model: &mut Model, frame: &mut Frame) {
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ");
-    
-    // Render list
-    frame.render_widget(list, layout[1]);
+
+    //Make the parent dir list
+    let items: Vec<ListItem> = model
+        .parent_dir_entries
+        .iter()
+        .map(|entry| {
+            let icon = if entry.is_dir { "📁" } else { "📄" };
+            let style = if entry.is_dir {
+                Style::default().fg(Color::Cyan)
+            } else {
+                Style::default()
+            };
+
+            let line = Line::from(vec![
+                Span::raw(format!("{} ", icon)),
+                Span::styled(&entry.name, style),
+            ]);
+
+            ListItem::new(line)
+        })
+        .collect();
+
+    let parent_list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(format!("{}", model.current_dir.parent().unwrap().display()))
+    );
+
+    // Render lists
+    frame.render_widget(parent_list, layout[0]);
+    frame.render_widget(cwd_list, layout[1]);
 }
