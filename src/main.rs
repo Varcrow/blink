@@ -1,4 +1,3 @@
-use crate::stfm::message::Message;
 use crate::stfm::model::{Model, RunningState};
 use color_eyre::eyre::Ok;
 use ratatui::{
@@ -22,10 +21,7 @@ fn main() -> color_eyre::Result<()> {
     // Loop
     while model.running_state != RunningState::Done {
         terminal.draw(|frame| view(&mut model, frame))?;
-        let mut current_message = handle_event()?;
-        while current_message.is_some() {
-            current_message = update(&mut model, current_message.unwrap());
-        }
+        handle_input(&mut model);
     }
 
     // Restore
@@ -34,31 +30,20 @@ fn main() -> color_eyre::Result<()> {
 }
 
 // Handles way keys are pressed
-fn handle_event() -> color_eyre::Result<Option<Message>> {
-    if let Event::Key(k) = event::read()? {
-        return Ok(handle_key(k));
-    }
-    Ok(None)
-}
-
-// Gets the actual event associated with specific keys
-fn handle_key(key: event::KeyEvent) -> Option<Message> {
-    match key.code {
-        KeyCode::Char('q') => Some(Message::Quit),
-        _ => None,
-    }
-}
-
-// Mutates the model or performs operations
-fn update(model: &mut Model, message: Message) -> Option<Message> {
-    match message {
-        Message::Quit => {
-            model.running_state = RunningState::Done;
+fn handle_input(model: &mut Model) {
+    if event::poll(std::time::Duration::from_millis(100)).unwrap() {
+        if let Event::Key(key) = event::read().unwrap() {
+            match key.code {
+                KeyCode::Char('q') => model.running_state = RunningState::Done,
+                KeyCode::Down | KeyCode::Char('j') => model.next(),
+                KeyCode::Up | KeyCode::Char('k') => model.previous(),
+                KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
+                    model.enter_selected();
+                }
+                _ => {}
+            }
         }
-        Message::Make { t, path } => todo!(),
-        Message::Remove { path } => todo!(),
     }
-    None
 }
 
 // Render func
@@ -132,10 +117,10 @@ fn view(model: &mut Model, frame: &mut Frame) {
     let parent_list = List::new(items).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!("{}", model.current_dir.parent().unwrap().display()))
+            .title(format!("{}", model.current_dir.parent().unwrap().display())),
     );
 
     // Render lists
     frame.render_widget(parent_list, layout[0]);
-    frame.render_widget(cwd_list, layout[1]);
+    frame.render_stateful_widget(cwd_list, layout[1], &mut model.list_state);
 }

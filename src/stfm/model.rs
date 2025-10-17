@@ -45,7 +45,7 @@ impl Model {
         self.update_parent_dir_entries();
     }
 
-    fn next(&mut self) {
+    pub fn next(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i >= self.cwd_entries.len() - 1 {
@@ -59,7 +59,7 @@ impl Model {
         self.list_state.select(Some(i));
     }
 
-    fn previous(&mut self) {
+    pub fn previous(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -73,7 +73,7 @@ impl Model {
         self.list_state.select(Some(i));
     }
 
-    fn enter_selected(&mut self) {
+    pub fn enter_selected(&mut self) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 if entry.is_dir {
