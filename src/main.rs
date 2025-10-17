@@ -1,4 +1,4 @@
-use crate::stfm::model::{Model, RunningState};
+use crate::stfm::model::{DirPreview, Model, RunningState};
 use color_eyre::eyre::Ok;
 use ratatui::{
     Frame,
@@ -7,9 +7,9 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols::border,
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
 };
-use std::{env::current_dir, time::Duration};
+use std::{env::current_dir, fs, time::Duration};
 
 mod stfm;
 
@@ -55,14 +55,11 @@ fn handle_input(model: &mut Model) -> color_eyre::Result<()> {
 fn view(model: &mut Model, frame: &mut Frame) {
     // Three sections of layout: Parent | Current | Preview
     let layout = Layout::horizontal([
-        Constraint::Fill(3),
-        Constraint::Fill(4),
-        Constraint::Fill(3),
+        Constraint::Fill(2),
+        Constraint::Fill(2),
+        Constraint::Fill(6),
     ])
     .split(frame.area());
-
-    // Three borders, one for each section
-    frame.render_widget(Block::bordered().border_set(border::ROUNDED), layout[2]);
 
     //Make the cwd list
     let items: Vec<ListItem> = model
@@ -129,7 +126,43 @@ fn view(model: &mut Model, frame: &mut Frame) {
                 .unwrap_or_else(|| "Root".to_string())
         )));
 
+    // Preview contents
+    match &model.dir_preview {
+        DirPreview::File { contents } => {
+            let file_contents =
+                Paragraph::new(contents.clone()).block(Block::default().borders(Borders::ALL));
+            frame.render_widget(file_contents, layout[2]);
+        }
+        DirPreview::Directory { entries } => {
+            let preview_contents: Vec<ListItem> = entries
+                .iter()
+                .map(|entry| {
+                    let icon = if entry.is_dir { "📁" } else { "📄" };
+                    let style = if entry.is_dir {
+                        Style::default().fg(Color::Cyan)
+                    } else {
+                        Style::default()
+                    };
+
+                    let line = Line::from(vec![
+                        Span::raw(format!("{} ", icon)),
+                        Span::styled(&entry.name, style),
+                    ]);
+
+                    ListItem::new(line)
+                })
+                .collect();
+
+            let preview_list = List::new(preview_contents).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!(" {} ", model.current_dir.display())),
+            );
+            frame.render_widget(preview_list, layout[2]);
+        }
+    }
+
     // Render lists
-    frame.render_widget(parent_list, layout[0]);
     frame.render_stateful_widget(cwd_list, layout[1], &mut model.list_state);
+    frame.render_widget(parent_list, layout[0]);
 }
