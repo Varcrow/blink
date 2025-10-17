@@ -83,6 +83,12 @@ impl Model {
             }
         }
     }
+
+    pub fn up_dir_level(&mut self) {
+        if self.current_dir.parent().is_some() {
+            self.update_current_dir(self.current_dir.parent().unwrap().to_path_buf());
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]

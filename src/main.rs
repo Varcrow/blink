@@ -1,15 +1,9 @@
 use crate::stfm::model::{Model, RunningState};
 use color_eyre::eyre::Ok;
 use ratatui::{
-    Frame,
-    crossterm::event::{self, Event, KeyCode},
-    layout::{Constraint, Layout},
-    style::{Color, Modifier, Style},
-    symbols::border,
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    crossterm::event::{self, Event, KeyCode, KeyEventKind}, layout::{Constraint, Layout}, style::{Color, Modifier, Style}, symbols::border, text::{Line, Span}, widgets::{Block, Borders, List, ListItem}, Frame
 };
-use std::env::current_dir;
+use std::{env::current_dir, time::Duration};
 
 mod stfm;
 
@@ -21,7 +15,10 @@ fn main() -> color_eyre::Result<()> {
     // Loop
     while model.running_state != RunningState::Done {
         terminal.draw(|frame| view(&mut model, frame))?;
-        handle_input(&mut model);
+
+        if event::poll(Duration::from_millis(100))? {
+            handle_input(&mut model)?;
+        }
     }
 
     // Restore
@@ -30,13 +27,14 @@ fn main() -> color_eyre::Result<()> {
 }
 
 // Handles way keys are pressed
-fn handle_input(model: &mut Model) {
-    if event::poll(std::time::Duration::from_millis(100)).unwrap() {
-        if let Event::Key(key) = event::read().unwrap() {
+fn handle_input(model: &mut Model) -> color_eyre::Result<()> {
+    if let Event::Key(key) = event::read()? {
+        if key.kind == KeyEventKind::Press {
             match key.code {
-                KeyCode::Char('q') => model.running_state = RunningState::Done,
+                KeyCode::Esc | KeyCode::Char('q') => model.running_state = RunningState::Done,
                 KeyCode::Down | KeyCode::Char('j') => model.next(),
                 KeyCode::Up | KeyCode::Char('k') => model.previous(),
+                KeyCode::Left | KeyCode::Char('h') => model.up_dir_level(),
                 KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
                     model.enter_selected();
                 }
@@ -44,6 +42,7 @@ fn handle_input(model: &mut Model) {
             }
         }
     }
+    Ok(())
 }
 
 // Render func
@@ -91,7 +90,7 @@ fn view(model: &mut Model, frame: &mut Frame) {
                 .bg(Color::DarkGray)
                 .add_modifier(Modifier::BOLD),
         )
-        .highlight_symbol(">> ");
+        .highlight_symbol("> ");
 
     //Make the parent dir list
     let items: Vec<ListItem> = model
