@@ -5,11 +5,10 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Layout},
     style::{Color, Modifier, Style},
-    symbols::border,
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
-use std::{env::current_dir, fs, time::Duration};
+use std::{env::current_dir, time::Duration};
 
 mod stfm;
 
