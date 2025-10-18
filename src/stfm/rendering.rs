@@ -1,4 +1,13 @@
-pub fn view(model: &mut Model, frame: &mut Frame) {
+use crate::stfm::app::{App, DirPreview};
+use ratatui::{
+    Frame,
+    layout::{Constraint, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+};
+
+pub fn render(app: &mut App, frame: &mut Frame) {
     // Three sections of layout: Parent | Current | Preview
     let layout = Layout::horizontal([
         Constraint::Fill(2),
@@ -8,7 +17,7 @@ pub fn view(model: &mut Model, frame: &mut Frame) {
     .split(frame.area());
 
     //Make the cwd list
-    let items: Vec<ListItem> = model
+    let items: Vec<ListItem> = app
         .cwd_entries
         .iter()
         .map(|entry| {
@@ -32,7 +41,7 @@ pub fn view(model: &mut Model, frame: &mut Frame) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!(" {} ", model.current_dir.display())),
+                .title(format!(" {} ", app.current_dir.display())),
         )
         .highlight_style(
             Style::default()
@@ -42,7 +51,7 @@ pub fn view(model: &mut Model, frame: &mut Frame) {
         .highlight_symbol("> ");
 
     //Make the parent dir list
-    let items: Vec<ListItem> = model
+    let items: Vec<ListItem> = app
         .parent_dir_entries
         .iter()
         .map(|entry| {
@@ -65,15 +74,15 @@ pub fn view(model: &mut Model, frame: &mut Frame) {
     let parent_list =
         List::new(items).block(Block::default().borders(Borders::ALL).title(format!(
             "{}",
-            model
+            app
                 .current_dir
                 .parent()
                 .map(|p| p.display().to_string())
                 .unwrap_or_else(|| "Root".to_string())
         )));
 
-    // Preview contents
-    match &model.dir_preview {
+    // Preview contents widget
+    match &app.dir_preview {
         DirPreview::File { contents } => {
             let file_contents =
                 Paragraph::new(contents.clone()).block(Block::default().borders(Borders::ALL));
@@ -102,13 +111,13 @@ pub fn view(model: &mut Model, frame: &mut Frame) {
             let preview_list = List::new(preview_contents).block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!(" {} ", model.current_dir.display())),
+                    .title(format!(" {} ", app.current_dir.display())),
             );
             frame.render_widget(preview_list, layout[2]);
         }
     }
 
     // Render lists
-    frame.render_stateful_widget(cwd_list, layout[1], &mut model.list_state);
+    frame.render_stateful_widget(cwd_list, layout[1], &mut app.list_state);
     frame.render_widget(parent_list, layout[0]);
 }

@@ -1,7 +1,4 @@
-use crate::stfm::{
-    entries::{FileEntry, get_entries},
-    rendering::view,
-};
+use crate::stfm::{entries::{get_entries, FileEntry}, rendering::render};
 use color_eyre::eyre::Ok;
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
@@ -33,7 +30,7 @@ impl Default for DirPreview {
 
 #[derive(Debug, Default)]
 pub struct App {
-    pub running_state: RunningState,
+    running_state: RunningState,
     pub list_state: ListState,
     pub current_dir: PathBuf,
     pub parent_dir_entries: Vec<FileEntry>,
@@ -61,7 +58,7 @@ impl App {
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
         while self.running_state != RunningState::Done {
-            terminal.draw(|frame| view(self, frame))?;
+            terminal.draw(|frame| render(self, frame))?;
 
             if event::poll(Duration::from_millis(100))? {
                 self.handle_input()?;

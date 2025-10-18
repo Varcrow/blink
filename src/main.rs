@@ -1,6 +1,5 @@
-use std::env::current_dir;
-
 use crate::stfm::app::App;
+use std::env::current_dir;
 mod stfm;
 
 fn main() -> color_eyre::Result<()> {
