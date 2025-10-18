@@ -1,3 +1,14 @@
+use crate::stfm::{
+    entries::{FileEntry, get_entries},
+    rendering::view,
+};
+use color_eyre::eyre::Ok;
+use ratatui::{
+    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    widgets::ListState,
+};
+use std::{fs, path::PathBuf, time::Duration};
+
 #[derive(Debug, Default, PartialEq, Eq)]
 enum RunningState {
     #[default]
@@ -6,7 +17,7 @@ enum RunningState {
 }
 
 #[derive(Debug)]
-enum DirPreview {
+pub enum DirPreview {
     File { contents: String },
     Directory { entries: Vec<FileEntry> },
 }
@@ -50,10 +61,10 @@ impl App {
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
         while self.running_state != RunningState::Done {
-            terminal.draw(|frame| view(&mut model, frame))?;
+            terminal.draw(|frame| view(self, frame))?;
 
             if event::poll(Duration::from_millis(100))? {
-                handle_input(&mut model)?;
+                self.handle_input()?;
             }
         }
         ratatui::restore();
