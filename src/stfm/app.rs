@@ -65,7 +65,7 @@ impl App {
             running_state: RunningState::Running,
             list_state: ListState::default(),
             current_dir: path.clone(),
-            yanked_entry_path: Some(PathBuf::new()),
+            yanked_entry_path: None,
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
             dir_preview: DirPreview::File {
@@ -281,7 +281,8 @@ impl App {
                 } else if source.is_dir() {
                     _ = copy_dir_recursively(&source.as_path(), &destination);
                 }
-
+                
+                self.yanked_entry_path = None;
                 self.update_all_entries();
             }
         }

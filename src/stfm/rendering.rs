@@ -8,15 +8,61 @@ use ratatui::{
 };
 
 pub fn render(app: &mut App, frame: &mut Frame) {
-    // Three sections of layout: Parent | Current | Preview
-    let layout = Layout::horizontal([
-        Constraint::Fill(2),
-        Constraint::Fill(2),
-        Constraint::Fill(6),
-    ])
-    .split(frame.area());
+    let outer_layout =
+        Layout::vertical([Constraint::Min(0), Constraint::Length(1)]).split(frame.area());
 
-    //Make the cwd list
+    let columns = Layout::horizontal([
+        Constraint::Percentage(20),
+        Constraint::Percentage(30),
+        Constraint::Percentage(50),
+    ])
+    .split(outer_layout[0]);
+
+    render_parent_dir(app, frame, columns[0]);
+    render_current_dir(app, frame, columns[1]);
+    render_preview_dir(app, frame, columns[2]);
+    render_status_bar(app, frame, outer_layout[1]);
+
+    if app.popup_mode != PopupMode::None {
+        render_popup(app, frame);
+    }
+}
+
+fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
+    let items: Vec<ListItem> = app
+        .parent_dir_entries
+        .iter()
+        .map(|entry| {
+            let icon = if entry.is_dir { "📁" } else { "📄" };
+            let style = if entry.is_dir {
+                Style::default().fg(Color::Cyan)
+            } else {
+                Style::default()
+            };
+
+            let line = Line::from(vec![
+                Span::raw(format!("{} ", icon)),
+                Span::styled(&entry.name, style),
+            ]);
+
+            ListItem::new(line)
+        })
+        .collect();
+
+    let parent_list =
+        List::new(items).block(Block::default().borders(Borders::ALL).title(format!(
+            "{}",
+            app
+                .current_dir
+                .parent()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| "Root".to_string())
+        )));
+
+    frame.render_widget(parent_list, area);
+}
+
+fn render_current_dir(app: &mut App, frame: &mut Frame, area: Rect) {
     let items: Vec<ListItem> = app
         .cwd_entries
         .iter()
@@ -49,44 +95,14 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol("> ");
-
-    //Make the parent dir list
-    let items: Vec<ListItem> = app
-        .parent_dir_entries
-        .iter()
-        .map(|entry| {
-            let icon = if entry.is_dir { "📁" } else { "📄" };
-            let style = if entry.is_dir {
-                Style::default().fg(Color::Cyan)
-            } else {
-                Style::default()
-            };
-
-            let line = Line::from(vec![
-                Span::raw(format!("{} ", icon)),
-                Span::styled(&entry.name, style),
-            ]);
-
-            ListItem::new(line)
-        })
-        .collect();
-
-    let parent_list =
-        List::new(items).block(Block::default().borders(Borders::ALL).title(format!(
-            "{}",
-            app
-                .current_dir
-                .parent()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "Root".to_string())
-        )));
-
-    // Preview contents widget
+    frame.render_stateful_widget(cwd_list, area, &mut app.list_state);
+}
+fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
     match &app.dir_preview {
         DirPreview::File { contents } => {
             let file_contents =
                 Paragraph::new(contents.clone()).block(Block::default().borders(Borders::ALL));
-            frame.render_widget(file_contents, layout[2]);
+            frame.render_widget(file_contents, area);
         }
         DirPreview::Directory { entries } => {
             let preview_contents: Vec<ListItem> = entries
@@ -113,17 +129,30 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     .borders(Borders::ALL)
                     .title(format!(" {} ", app.current_dir.display())),
             );
-            frame.render_widget(preview_list, layout[2]);
+            frame.render_widget(preview_list, area);
         }
     }
+}
 
-    // Render lists
-    frame.render_stateful_widget(cwd_list, layout[1], &mut app.list_state);
-    frame.render_widget(parent_list, layout[0]);
+fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
+    let dir_count = app.cwd_entries.iter().filter(|e| e.is_dir).count();
+    let file_count = app.cwd_entries.len() - dir_count;
 
-    if app.popup_mode != PopupMode::None {
-        render_popup(app, frame);
-    }
+    let yank_status = if app.yanked_entry_path.is_some() {
+        "[Yanked]"
+    } else {
+        "[Clear]"
+    };
+
+    let status = format!(
+        " 📁 {} dirs | 📄 {} files | {} | y:yank p:paste d:delete r:rename m:mkdir n:new q:quit",
+        dir_count, file_count, yank_status
+    );
+
+    let status_bar =
+        Paragraph::new(status).style(Style::default().fg(Color::White));
+
+    frame.render_widget(status_bar, area);
 }
 
 fn render_popup(app: &App, frame: &mut Frame) {
