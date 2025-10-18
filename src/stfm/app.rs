@@ -1,4 +1,3 @@
-use std::result::Result::Ok;
 use crate::stfm::{
     entries::{FileEntry, get_entries},
     rendering::render,
@@ -7,6 +6,7 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     widgets::ListState,
 };
+use std::result::Result::Ok;
 use std::{fs, path::PathBuf, time::Duration};
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -31,6 +31,21 @@ impl Default for DirPreview {
     }
 }
 
+#[derive(Default, Debug, PartialEq, Eq)]
+pub enum PopupMode {
+    #[default]
+    None,
+    Rename {
+        input: String,
+    },
+    Delete {
+        confirm: bool,
+    },
+    NewEntry {
+        input: String,
+    },
+}
+
 #[derive(Debug, Default)]
 pub struct App {
     running_state: RunningState,
@@ -39,6 +54,7 @@ pub struct App {
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
     pub dir_preview: DirPreview,
+    pub popup_mode: PopupMode,
 }
 
 // pub functions
@@ -53,6 +69,7 @@ impl App {
             dir_preview: DirPreview::File {
                 contents: String::new(),
             },
+            popup_mode: PopupMode::None,
         };
         app.update_all_entries();
         app
@@ -124,19 +141,123 @@ impl App {
     fn handle_input(&mut self) -> color_eyre::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Esc | KeyCode::Char('q') => self.running_state = RunningState::Done,
-                    KeyCode::Down | KeyCode::Char('j') => self.next(),
-                    KeyCode::Up | KeyCode::Char('k') => self.previous(),
-                    KeyCode::Left | KeyCode::Char('h') => self.up_dir_level(),
-                    KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
-                        self.enter_selected();
+                if self.popup_mode != PopupMode::None {
+                    self.handle_popup_input(key.code)?;
+                } else {
+                    match key.code {
+                        // normal navigation
+                        KeyCode::Esc | KeyCode::Char('q') => {
+                            self.running_state = RunningState::Done
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => self.next(),
+                        KeyCode::Up | KeyCode::Char('k') => self.previous(),
+                        KeyCode::Left | KeyCode::Char('h') => self.up_dir_level(),
+                        KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
+                            self.enter_selected();
+                        }
+                        // file operations
+                        KeyCode::Char('r') => self.open_rename_popup(),
+                        KeyCode::Char('d') => self.open_delete_popup(),
+                        KeyCode::Char('m') => self.open_new_entry_popup(),
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
         Ok(())
+    }
+    fn handle_popup_input(&mut self, key_code: KeyCode) -> color_eyre::Result<()> {
+        match &mut self.popup_mode {
+            PopupMode::None => {}
+            PopupMode::Rename { input } | PopupMode::NewEntry { input } => match key_code {
+                KeyCode::Esc => {
+                    self.popup_mode = PopupMode::None;
+                }
+                KeyCode::Enter => {
+                    self.execute_popup_action()?;
+                    self.popup_mode = PopupMode::None;
+                }
+                KeyCode::Char(c) => {
+                    input.push(c);
+                }
+                KeyCode::Backspace => {
+                    input.pop();
+                }
+                _ => {}
+            },
+            PopupMode::Delete { confirm } => match key_code {
+                KeyCode::Esc | KeyCode::Char('n') => {
+                    self.popup_mode = PopupMode::None;
+                }
+                KeyCode::Char('y') | KeyCode::Enter => {
+                    self.execute_popup_action()?;
+                    self.popup_mode = PopupMode::None;
+                }
+                _ => {}
+            },
+        }
+        Ok(())
+    }
+
+    fn execute_popup_action(&mut self) -> color_eyre::Result<()> {
+        match &self.popup_mode {
+            PopupMode::Rename { input } => {
+                if let Some(i) = self.list_state.selected() {
+                    if let Some(entry) = self.cwd_entries.get(i) {
+                        let new_path = self.current_dir.join(input);
+                        fs::rename(&entry.path, &new_path)?;
+                        self.update_all_entries();
+                    }
+                }
+            }
+            // SO if the input contains a . somewhere it's a folder :P
+            // this does not support creating hidden folders yet, so stuff like .config
+            PopupMode::NewEntry { input } => {
+                if input.contains('.') {
+                    let new_path = self.current_dir.join(input);
+                    fs::File::create(&new_path)?;
+                    self.update_all_entries();
+                } else {
+                    let new_path = self.current_dir.join(input);
+                    fs::create_dir(&new_path)?;
+                    self.update_all_entries();
+                }
+            }
+            PopupMode::Delete { .. } => {
+                if let Some(i) = self.list_state.selected() {
+                    if let Some(entry) = self.cwd_entries.get(i) {
+                        if entry.is_dir {
+                            fs::remove_dir_all(&entry.path)?;
+                        } else {
+                            fs::remove_file(&entry.path)?;
+                        }
+                        self.update_all_entries();
+                    }
+                }
+            }
+            PopupMode::None => {}
+        }
+        Ok(())
+    }
+
+    fn open_rename_popup(&mut self) {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                self.popup_mode = PopupMode::Rename {
+                    input: entry.name.clone(),
+                };
+            }
+        }
+    }
+
+    fn open_delete_popup(&mut self) {
+        self.popup_mode = PopupMode::Delete { confirm: false };
+    }
+
+    fn open_new_entry_popup(&mut self) {
+        self.popup_mode = PopupMode::NewEntry {
+            input: String::new(),
+        };
     }
 
     fn next(&mut self) {
