@@ -11,16 +11,17 @@ pub struct FileEntry {
     pub is_hidden: bool,
 }
 
-// This func filters out the shit it can't read aka doesnt have permission for
 pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
-    // if we cant even read the directory then return nothing
+    // check if called path is readable otherwise SKIPPPPP
+    // jk we return empty vec
+    // basically a precaution since this should never happen
+    // but shit would crash without it 
     let read_dir = match fs::read_dir(path) {
         Ok(rd) => rd,
         Err(_) => return Ok(Vec::new()),
     };
 
     let mut entries = Vec::new();
-
     for entry in read_dir {
         let entry = match entry {
             Ok(e) => e,
@@ -32,13 +33,21 @@ pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
         };
         let path = entry.path();
         let is_dir = metadata.is_dir();
-        // if this entries a directory then can we read it, if not it goes gulag
+        // if this is a directory we cant read then we shouldnt see it so SKIP
         if is_dir {
             if fs::read_dir(&path).is_err() {
                 continue;
             }
         }
-        let name = entry.file_name().to_string_lossy().to_string();
+        // supposed to check if file is utf8 based on name but i dont think it's working :D
+        // ill leave it here for now
+        let name = match entry.file_name().to_str() {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+
+        // TODO: when i feel like implementing it im pretty sure hiding files should happen here...
+        // maybe
         let is_hidden = name.starts_with('.');
 
         entries.push(FileEntry {
@@ -49,6 +58,7 @@ pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
         });
     }
 
+    // sort so dirs are first followed by files and each section is alphabetical
     entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
         (true, false) => std::cmp::Ordering::Less,
         (false, true) => std::cmp::Ordering::Greater,

@@ -1,5 +1,8 @@
-use crate::stfm::{entries::{get_entries, FileEntry}, rendering::render};
-use color_eyre::eyre::Ok;
+use std::result::Result::Ok;
+use crate::stfm::{
+    entries::{FileEntry, get_entries},
+    rendering::render,
+};
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     widgets::ListState,
@@ -93,12 +96,17 @@ impl App {
             if let Some(entry) = self.cwd_entries.get(selected_idx) {
                 if entry.is_dir {
                     self.dir_preview = DirPreview::Directory {
-                        entries: get_entries(&entry.path).unwrap(),
+                        entries: get_entries(&entry.path).unwrap_or_default(),
                     }
                 } else {
-                    self.dir_preview = DirPreview::File {
-                        contents: fs::read_to_string(&entry.path).unwrap(),
-                    }
+                    // this is basically the solution for files that are not utf8 since i can't
+                    // figure out how to filter the entries out
+                    // read as utf8 or fallback message!
+                    let contents = match fs::read_to_string(&entry.path) {
+                        Ok(text) => text,
+                        Err(_) => "[Binary file or non-UTF-8 content]".to_string(),
+                    };
+                    self.dir_preview = DirPreview::File { contents }
                 }
             }
         }
