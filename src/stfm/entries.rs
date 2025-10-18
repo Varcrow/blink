@@ -11,20 +11,17 @@ pub struct FileEntry {
     pub is_hidden: bool,
 }
 
-// This func filters out the shit it can't read aka doesnt have permission for since program goes
-// monke mode if we attempt to peak at shit we arent allowed to:D
+// This func filters out the shit it can't read aka doesnt have permission for
 pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
-    // can we even read the dir
-    let _ = match fs::read_dir(path) {
+    // if we cant even read the directory then return nothing
+    let read_dir = match fs::read_dir(path) {
         Ok(rd) => rd,
-        Err(_) => {
-            return Ok(Vec::new());
-        }
+        Err(_) => return Ok(Vec::new()),
     };
 
     let mut entries = Vec::new();
 
-    for entry in fs::read_dir(path)? {
+    for entry in read_dir {
         let entry = match entry {
             Ok(e) => e,
             Err(_) => continue,
@@ -33,9 +30,14 @@ pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
             Ok(m) => m,
             Err(_) => continue,
         };
-
         let path = entry.path();
         let is_dir = metadata.is_dir();
+        // if this entries a directory then can we read it, if not it goes gulag
+        if is_dir {
+            if fs::read_dir(&path).is_err() {
+                continue;
+            }
+        }
         let name = entry.file_name().to_string_lossy().to_string();
         let is_hidden = name.starts_with('.');
 
@@ -47,7 +49,6 @@ pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
         });
     }
 
-    // Sort: directories first, then alphabetically
     entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
         (true, false) => std::cmp::Ordering::Less,
         (false, true) => std::cmp::Ordering::Greater,
