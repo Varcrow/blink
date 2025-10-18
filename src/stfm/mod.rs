@@ -1,4 +1,3 @@
-pub mod operations;
-pub mod entries;
 pub mod app;
+pub mod entries;
 pub mod rendering;

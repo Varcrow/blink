@@ -51,6 +51,7 @@ pub struct App {
     running_state: RunningState,
     pub list_state: ListState,
     pub current_dir: PathBuf,
+    pub yanked_entry_path: PathBuf,
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
     pub dir_preview: DirPreview,
@@ -64,6 +65,7 @@ impl App {
             running_state: RunningState::Running,
             list_state: ListState::default(),
             current_dir: path.clone(),
+            yanked_entry_path: PathBuf::new(),
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
             dir_preview: DirPreview::File {
@@ -159,6 +161,8 @@ impl App {
                         KeyCode::Char('r') => self.open_rename_popup(),
                         KeyCode::Char('d') => self.open_delete_popup(),
                         KeyCode::Char('m') => self.open_new_entry_popup(),
+                        KeyCode::Char('y') => self.yank(),
+                        KeyCode::Char('p') => self.paste(),
                         _ => {}
                     }
                 }
@@ -189,7 +193,7 @@ impl App {
                 KeyCode::Esc | KeyCode::Char('n') => {
                     self.popup_mode = PopupMode::None;
                 }
-                KeyCode::Char('y') | KeyCode::Enter => {
+                KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
                     self.execute_popup_action()?;
                     self.popup_mode = PopupMode::None;
                 }
@@ -258,6 +262,18 @@ impl App {
         self.popup_mode = PopupMode::NewEntry {
             input: String::new(),
         };
+    }
+
+    fn yank(&mut self) {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                self.yanked_entry_path = entry.path.clone();
+            }
+        }
+    }
+
+    fn paste(&self) {
+        _ = fs::copy(self.yanked_entry_path.clone(), self.current_dir.clone());
     }
 
     fn next(&mut self) {

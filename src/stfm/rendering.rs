@@ -1,10 +1,10 @@
-use crate::stfm::app::{App, DirPreview};
+use crate::stfm::app::{App, DirPreview, PopupMode};
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
 };
 
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -120,4 +120,47 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // Render lists
     frame.render_stateful_widget(cwd_list, layout[1], &mut app.list_state);
     frame.render_widget(parent_list, layout[0]);
+
+    if app.popup_mode != PopupMode::None {
+        render_popup(app, frame);
+    }
+}
+
+fn render_popup(app: &App, frame: &mut Frame) {
+    let area = centered_rect(60, 20, frame.area());
+
+    let (title, content) = match &app.popup_mode {
+        PopupMode::Rename { input } => ("Rename", format!("New name: {}", input)),
+        PopupMode::NewEntry { input } => ("New Entry", format!("File name: {}", input)),
+        PopupMode::Delete { .. } => ("Delete", "Are you sure? (y/n)".to_string()),
+        PopupMode::None => return,
+    };
+
+    let popup = Paragraph::new(content)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .style(Style::default()),
+        )
+        .alignment(Alignment::Center);
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(popup, area);
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::vertical([
+        Constraint::Percentage((100 - percent_y) / 2),
+        Constraint::Percentage(percent_y),
+        Constraint::Percentage((100 - percent_y) / 2),
+    ])
+    .split(r);
+
+    Layout::horizontal([
+        Constraint::Percentage((100 - percent_x) / 2),
+        Constraint::Percentage(percent_x),
+        Constraint::Percentage((100 - percent_x) / 2),
+    ])
+    .split(popup_layout[1])[1]
 }
