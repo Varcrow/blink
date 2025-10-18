@@ -13,43 +13,7 @@ use std::{env::current_dir, time::Duration};
 mod stfm;
 
 fn main() -> color_eyre::Result<()> {
-    // Init
-    let mut terminal = ratatui::init();
-    let mut model = Model::new(current_dir()?);
-
-    // Loop
-    while model.running_state != RunningState::Done {
-        terminal.draw(|frame| view(&mut model, frame))?;
-
-        if event::poll(Duration::from_millis(100))? {
-            handle_input(&mut model)?;
-        }
-    }
-
-    // Restore
-    ratatui::restore();
-    Ok(())
 }
-
-// Handles way keys are pressed
-fn handle_input(model: &mut Model) -> color_eyre::Result<()> {
-    if let Event::Key(key) = event::read()? {
-        if key.kind == KeyEventKind::Press {
-            match key.code {
-                KeyCode::Esc | KeyCode::Char('q') => model.running_state = RunningState::Done,
-                KeyCode::Down | KeyCode::Char('j') => model.next(),
-                KeyCode::Up | KeyCode::Char('k') => model.previous(),
-                KeyCode::Left | KeyCode::Char('h') => model.up_dir_level(),
-                KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
-                    model.enter_selected();
-                }
-                _ => {}
-            }
-        }
-    }
-    Ok(())
-}
-
 // Render func
 fn view(model: &mut Model, frame: &mut Frame) {
     // Three sections of layout: Parent | Current | Preview
