@@ -6,8 +6,8 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     widgets::ListState,
 };
-use std::result::Result::Ok;
 use std::{fs, path::PathBuf, time::Duration};
+use std::{io, path::Path, result::Result::Ok};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 enum RunningState {
@@ -51,7 +51,7 @@ pub struct App {
     running_state: RunningState,
     pub list_state: ListState,
     pub current_dir: PathBuf,
-    pub yanked_entry_path: PathBuf,
+    pub yanked_entry_path: Option<PathBuf>,
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
     pub dir_preview: DirPreview,
@@ -65,7 +65,7 @@ impl App {
             running_state: RunningState::Running,
             list_state: ListState::default(),
             current_dir: path.clone(),
-            yanked_entry_path: PathBuf::new(),
+            yanked_entry_path: Some(PathBuf::new()),
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
             dir_preview: DirPreview::File {
@@ -267,13 +267,24 @@ impl App {
     fn yank(&mut self) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
-                self.yanked_entry_path = entry.path.clone();
+                self.yanked_entry_path = Some(entry.path.clone());
             }
         }
     }
 
-    fn paste(&self) {
-        _ = fs::copy(self.yanked_entry_path.clone(), self.current_dir.clone());
+    fn paste(&mut self) {
+        if let Some(source) = &self.yanked_entry_path {
+            if let Some(filename) = source.file_name() {
+                let destination = self.current_dir.join(filename);
+                if source.is_file() {
+                    _ = fs::copy(source, &destination);
+                } else if source.is_dir() {
+                    _ = copy_dir_recursively(&source.as_path(), &destination);
+                }
+
+                self.update_all_entries();
+            }
+        }
     }
 
     fn next(&mut self) {
@@ -322,4 +333,22 @@ impl App {
             self.update_cwd(self.current_dir.parent().unwrap().to_path_buf());
         }
     }
+}
+
+fn copy_dir_recursively(src: &Path, dst: &Path) -> io::Result<()> {
+    fs::create_dir_all(dst)?;
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_dir_recursively(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    Ok(())
 }
