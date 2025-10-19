@@ -97,6 +97,7 @@ fn render_current_dir(app: &mut App, frame: &mut Frame, area: Rect) {
         .highlight_symbol("> ");
     frame.render_stateful_widget(cwd_list, area, &mut app.list_state);
 }
+
 fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
     match &app.dir_preview {
         DirPreview::File { contents } => {
@@ -149,8 +150,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
         dir_count, file_count, yank_status
     );
 
-    let status_bar =
-        Paragraph::new(status).style(Style::default().fg(Color::White));
+    let status_bar = Paragraph::new(status).style(Style::default().fg(Color::White));
 
     frame.render_widget(status_bar, area);
 }

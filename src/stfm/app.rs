@@ -120,7 +120,7 @@ impl App {
                 } else {
                     // this is basically the solution for files that are not utf8 since i can't
                     // figure out how to filter the entries out
-                    // read as utf8 or fallback message!
+                    // read as utf8 or fallback message
                     let contents = match fs::read_to_string(&entry.path) {
                         Ok(text) => text,
                         Err(_) => "[Binary file or non-UTF-8 content]".to_string(),
@@ -154,7 +154,7 @@ impl App {
                         KeyCode::Down | KeyCode::Char('j') => self.next(),
                         KeyCode::Up | KeyCode::Char('k') => self.previous(),
                         KeyCode::Left | KeyCode::Char('h') => self.up_dir_level(),
-                        KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
+                        KeyCode::Right | KeyCode::Char('l') => {
                             self.enter_selected();
                         }
                         // file operations
@@ -170,6 +170,7 @@ impl App {
         }
         Ok(())
     }
+
     fn handle_popup_input(&mut self, key_code: KeyCode) -> color_eyre::Result<()> {
         match &mut self.popup_mode {
             PopupMode::None => {}
@@ -214,7 +215,7 @@ impl App {
                     }
                 }
             }
-            // SO if the input contains a . somewhere it's a folder :P
+            // SO if the input contains a . somewhere it's a file :P
             // this does not support creating hidden folders yet, so stuff like .config
             PopupMode::NewEntry { input } => {
                 if input.contains('.') {
@@ -281,7 +282,7 @@ impl App {
                 } else if source.is_dir() {
                     _ = copy_dir_recursively(&source.as_path(), &destination);
                 }
-                
+
                 self.yanked_entry_path = None;
                 self.update_all_entries();
             }

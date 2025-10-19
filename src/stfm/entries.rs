@@ -15,7 +15,7 @@ pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
     // check if called path is readable otherwise SKIPPPPP
     // jk we return empty vec
     // basically a precaution since this should never happen
-    // but shit would crash without it 
+    // but shit would crash without it
     let read_dir = match fs::read_dir(path) {
         Ok(rd) => rd,
         Err(_) => return Ok(Vec::new()),
