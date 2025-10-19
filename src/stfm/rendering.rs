@@ -8,24 +8,34 @@ use ratatui::{
 };
 
 pub fn render(app: &mut App, frame: &mut Frame) {
-    let outer_layout =
-        Layout::vertical([Constraint::Min(0), Constraint::Length(1)]).split(frame.area());
+    let outer_layout = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Min(0),
+        Constraint::Length(1),
+    ])
+    .split(frame.area());
 
     let columns = Layout::horizontal([
         Constraint::Percentage(20),
         Constraint::Percentage(30),
         Constraint::Percentage(50),
     ])
-    .split(outer_layout[0]);
+    .split(outer_layout[1]);
 
+    render_current_dir_text(app, frame, outer_layout[0]);
     render_parent_dir(app, frame, columns[0]);
     render_current_dir(app, frame, columns[1]);
     render_preview_dir(app, frame, columns[2]);
-    render_status_bar(app, frame, outer_layout[1]);
+    render_status_bar(app, frame, outer_layout[2]);
 
     if app.popup_mode != PopupMode::None {
         render_popup(app, frame);
     }
+}
+
+fn render_current_dir_text(app: &App, frame: &mut Frame, area: Rect) {
+    let dir_text = Paragraph::new(format!(" {}", app.current_dir.display())).style(Style::default().fg(Color::White));
+    frame.render_widget(dir_text, area);
 }
 
 fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
@@ -49,15 +59,7 @@ fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
         })
         .collect();
 
-    let parent_list =
-        List::new(items).block(Block::default().borders(Borders::ALL).title(format!(
-            "{}",
-            app
-                .current_dir
-                .parent()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "Root".to_string())
-        )));
+    let parent_list = List::new(items).block(Block::default().borders(Borders::ALL));
 
     frame.render_widget(parent_list, area);
 }
@@ -84,11 +86,7 @@ fn render_current_dir(app: &mut App, frame: &mut Frame, area: Rect) {
         .collect();
 
     let cwd_list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(format!(" {} ", app.current_dir.display())),
-        )
+        .block(Block::default().borders(Borders::ALL))
         .highlight_style(
             Style::default()
                 .bg(Color::DarkGray)
@@ -125,11 +123,8 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
                 })
                 .collect();
 
-            let preview_list = List::new(preview_contents).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!(" {} ", app.current_dir.display())),
-            );
+            let preview_list =
+                List::new(preview_contents).block(Block::default().borders(Borders::ALL));
             frame.render_widget(preview_list, area);
         }
     }

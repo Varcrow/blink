@@ -95,6 +95,7 @@ impl App {
 impl App {
     fn update_cwd(&mut self, path: PathBuf) {
         self.current_dir = path;
+        self.list_state.select(Some(0));
         self.update_all_entries();
     }
 
@@ -323,8 +324,8 @@ impl App {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 if entry.is_dir {
-                    self.update_cwd(entry.path.clone());
                     self.list_state.select(Some(0));
+                    self.update_cwd(entry.path.clone());
                 }
             }
         }
