@@ -1,4 +1,5 @@
 use crate::stfm::{
+    config::Config,
     entries::{FileEntry, get_entries},
     rendering::render,
 };
@@ -49,6 +50,7 @@ pub enum PopupMode {
 #[derive(Debug, Default)]
 pub struct App {
     running_state: RunningState,
+    pub config: Config,
     pub list_state: ListState,
     pub current_dir: PathBuf,
     pub yanked_entry_path: Option<PathBuf>,
@@ -61,8 +63,11 @@ pub struct App {
 // pub functions
 impl App {
     pub fn new(path: PathBuf) -> App {
+        let config = Config::load().unwrap();
+
         let mut app = App {
             running_state: RunningState::Running,
+            config,
             list_state: ListState::default(),
             current_dir: path.clone(),
             yanked_entry_path: None,
