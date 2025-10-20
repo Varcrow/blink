@@ -186,7 +186,6 @@ impl App {
                 }
                 KeyCode::Enter => {
                     self.execute_popup_action()?;
-                    self.popup_mode = PopupMode::None;
                 }
                 KeyCode::Char(c) => {
                     input.push(c);
@@ -197,14 +196,13 @@ impl App {
                 _ => {}
             },
             PopupMode::Delete => {
-                if self.config.behavior.confirm_delete {
+                if self.config.behavior.confirm_delete == true {
                     match key_code {
                         KeyCode::Esc | KeyCode::Char('n') => {
                             self.popup_mode = PopupMode::None;
                         }
                         KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
                             self.execute_popup_action()?;
-                            self.popup_mode = PopupMode::None;
                         }
                         _ => {}
                     }
@@ -254,6 +252,7 @@ impl App {
             }
             PopupMode::None => {}
         }
+        self.popup_mode = PopupMode::None;
         Ok(())
     }
 
