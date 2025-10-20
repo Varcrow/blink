@@ -165,10 +165,17 @@ impl App {
                         }
                         // file operations
                         KeyCode::Char('r') => self.open_rename_popup(),
-                        KeyCode::Char('d') => self.open_delete_popup(),
                         KeyCode::Char('m') => self.open_new_entry_popup(),
                         KeyCode::Char(val) if val == self.config.keybindings.copy => self.yank(),
                         KeyCode::Char(val) if val == self.config.keybindings.paste => self.paste(),
+                        KeyCode::Char('d') => {
+                            if self.config.behavior.confirm_delete == false {
+                                self.popup_mode = PopupMode::Delete;
+                                self.execute_popup_action()?;
+                            } else {
+                                self.open_delete_popup()
+                            }
+                        }
                         _ => {}
                     }
                 }
@@ -195,21 +202,15 @@ impl App {
                 }
                 _ => {}
             },
-            PopupMode::Delete => {
-                if self.config.behavior.confirm_delete == true {
-                    match key_code {
-                        KeyCode::Esc | KeyCode::Char('n') => {
-                            self.popup_mode = PopupMode::None;
-                        }
-                        KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
-                            self.execute_popup_action()?;
-                        }
-                        _ => {}
-                    }
-                } else {
+            PopupMode::Delete => match key_code {
+                KeyCode::Esc | KeyCode::Char('n') => {
+                    self.popup_mode = PopupMode::None;
+                }
+                KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
                     self.execute_popup_action()?;
                 }
-            }
+                _ => {}
+            },
         }
         Ok(())
     }
