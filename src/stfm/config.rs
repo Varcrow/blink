@@ -53,7 +53,7 @@ impl Config {
         Ok(config)
     }
 
-    pub fn save(&self) -> color_eyre::Result<()> {
+    fn save(&self) -> color_eyre::Result<()> {
         let config_path = Self::config_path()?;
         if let Some(parent) = config_path.parent() {
             fs::create_dir_all(parent)?;
