@@ -11,7 +11,7 @@ pub struct FileEntry {
     pub is_hidden: bool,
 }
 
-pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
+pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>> {
     // check if called path is readable otherwise SKIPPPPP
     // jk we return empty vec
     // basically a precaution since this should never happen
@@ -45,10 +45,10 @@ pub fn get_entries(path: &Path) -> io::Result<Vec<FileEntry>> {
             Some(n) => n.to_string(),
             None => continue,
         };
-
-        // TODO: when i feel like implementing it im pretty sure hiding files should happen here...
-        // maybe
         let is_hidden = name.starts_with('.');
+        if is_hidden == true && show_hidden == false {
+            continue;
+        }
 
         entries.push(FileEntry {
             path,

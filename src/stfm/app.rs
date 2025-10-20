@@ -36,11 +36,9 @@ impl Default for DirPreview {
 pub enum PopupMode {
     #[default]
     None,
+    Delete,
     Rename {
         input: String,
-    },
-    Delete {
-        confirm: bool,
     },
     NewEntry {
         input: String,
@@ -105,12 +103,13 @@ impl App {
     }
 
     fn update_cwd_entries(&mut self) {
-        self.cwd_entries = get_entries(self.current_dir.as_path()).unwrap();
+        self.cwd_entries =
+            get_entries(self.config.ui.show_hidden, self.current_dir.as_path()).unwrap();
     }
 
     fn update_parent_dir_entries(&mut self) {
         if let Some(parent) = self.current_dir.parent() {
-            self.parent_dir_entries = get_entries(parent).unwrap();
+            self.parent_dir_entries = get_entries(self.config.ui.show_hidden, parent).unwrap();
         } else {
             self.parent_dir_entries.clear();
         }
@@ -121,7 +120,8 @@ impl App {
             if let Some(entry) = self.cwd_entries.get(selected_idx) {
                 if entry.is_dir {
                     self.dir_preview = DirPreview::Directory {
-                        entries: get_entries(&entry.path).unwrap_or_default(),
+                        entries: get_entries(self.config.ui.show_hidden, &entry.path)
+                            .unwrap_or_default(),
                     }
                 } else {
                     // this is basically the solution for files that are not utf8 since i can't
@@ -167,8 +167,8 @@ impl App {
                         KeyCode::Char('r') => self.open_rename_popup(),
                         KeyCode::Char('d') => self.open_delete_popup(),
                         KeyCode::Char('m') => self.open_new_entry_popup(),
-                        KeyCode::Char('y') => self.yank(),
-                        KeyCode::Char('p') => self.paste(),
+                        KeyCode::Char(val) if val == self.config.keybindings.copy => self.yank(),
+                        KeyCode::Char(val) if val == self.config.keybindings.paste => self.paste(),
                         _ => {}
                     }
                 }
@@ -196,16 +196,22 @@ impl App {
                 }
                 _ => {}
             },
-            PopupMode::Delete { confirm } => match key_code {
-                KeyCode::Esc | KeyCode::Char('n') => {
-                    self.popup_mode = PopupMode::None;
-                }
-                KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
+            PopupMode::Delete => {
+                if self.config.behavior.confirm_delete {
+                    match key_code {
+                        KeyCode::Esc | KeyCode::Char('n') => {
+                            self.popup_mode = PopupMode::None;
+                        }
+                        KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
+                            self.execute_popup_action()?;
+                            self.popup_mode = PopupMode::None;
+                        }
+                        _ => {}
+                    }
+                } else {
                     self.execute_popup_action()?;
-                    self.popup_mode = PopupMode::None;
                 }
-                _ => {}
-            },
+            }
         }
         Ok(())
     }
@@ -262,7 +268,7 @@ impl App {
     }
 
     fn open_delete_popup(&mut self) {
-        self.popup_mode = PopupMode::Delete { confirm: false };
+        self.popup_mode = PopupMode::Delete;
     }
 
     fn open_new_entry_popup(&mut self) {

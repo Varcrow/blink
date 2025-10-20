@@ -20,11 +20,11 @@ use std::path::PathBuf;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
-    ui: UiConfig,
+    pub ui: UiConfig,
     #[serde(default)]
-    keybindings: Keybindings,
+    pub keybindings: Keybindings,
     #[serde(default)]
-    behavior: Behavior,
+    pub behavior: Behavior,
 }
 
 impl Default for Config {
@@ -94,16 +94,16 @@ impl Default for UiConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Keybindings {
     #[serde(default = "default_copy")]
-    copy: char,
+    pub copy: char,
     #[serde(default = "default_paste")]
-    past: char,
+    pub paste: char,
 }
 
 impl Default for Keybindings {
     fn default() -> Self {
         Self {
             copy: default_copy(),
-            past: default_paste(),
+            paste: default_paste(),
         }
     }
 }
