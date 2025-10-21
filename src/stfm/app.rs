@@ -275,6 +275,7 @@ impl App {
                     }
                 } else {
                     self.input_mode = InputMode::BookmarkCreation { tag: input.clone() };
+                    return Ok(());
                 }
             }
             InputMode::BookmarkCreation { tag } => {

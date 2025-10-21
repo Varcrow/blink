@@ -152,12 +152,37 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_popup(app: &App, frame: &mut Frame) {
-    let area = centered_rect(60, 20, frame.area());
-
-    let (title, content) = match &app.input_mode {
-        InputMode::Rename { input } => ("Rename", format!("New name: {}", input)),
-        InputMode::NewEntry { input } => ("New Entry", format!("File name: {}", input)),
-        InputMode::Delete => ("Delete", "Are you sure? (y/n)".to_string()),
+    let (area, title, content) = match &app.input_mode {
+        InputMode::Rename { input } => {
+            let area = centered_rect(60, 15, frame.area());
+            let title = "Rename";
+            let content = format!("New name: {}", input);
+            (area, title, content)
+        }
+        InputMode::NewEntry { input } => {
+            let area = centered_rect(60, 15, frame.area());
+            let title = "Rename";
+            let content = format!("Entry name: {}", input);
+            (area, title, content)
+        }
+        InputMode::Bookmarks { input } => {
+            let area = centered_rect(60, 15, frame.area());
+            let title = "Bookmark";
+            let content = format!("Tag: {}", input);
+            (area, title, content)
+        }
+        InputMode::BookmarkCreation { tag } => {
+            let area = centered_rect(60, 15, frame.area());
+            let title = "Bookmark";
+            let content = format!("Create bookmark \"{}\" with cwd?: y/n", tag);
+            (area, title, content)
+        }
+        InputMode::Delete => {
+            let area = centered_rect(60, 15, frame.area());
+            let title = "Delete";
+            let content = format!("Delete entry?: y/n");
+            (area, title, content)
+        }
         InputMode::None => return,
     };
 
@@ -172,6 +197,10 @@ fn render_popup(app: &App, frame: &mut Frame) {
 
     frame.render_widget(Clear, area);
     frame.render_widget(popup, area);
+}
+
+fn rename_popup(app: &App, frame: &mut Frame) {
+    let area = centered_rect(60, 20, frame.area());
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
