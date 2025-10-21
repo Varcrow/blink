@@ -9,7 +9,7 @@ use ratatui::{
     widgets::ListState,
 };
 use std::{fs, path::PathBuf, time::Duration};
-use std::{io, path::Path, result::Result::Ok};
+use std::{io, path::Path};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 enum RunningState {
@@ -19,13 +19,13 @@ enum RunningState {
 }
 
 #[derive(Debug)]
-pub enum DirPreview {
+pub enum Preview {
     File { contents: String },
     Directory { entries: Vec<FileEntry> },
 }
 
 // wtf is this
-impl Default for DirPreview {
+impl Default for Preview {
     fn default() -> Self {
         Self::File {
             contents: String::new(),
@@ -34,7 +34,7 @@ impl Default for DirPreview {
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
-pub enum PopupMode {
+pub enum InputMode {
     #[default]
     None,
     Delete,
@@ -52,39 +52,41 @@ pub enum PopupMode {
 #[derive(Debug, Default)]
 pub struct App {
     running_state: RunningState,
-    pub config: Config,
-    pub bookmarks: Bookmarks,
     pub list_state: ListState,
-    pub current_dir: PathBuf,
+    pub cwd: PathBuf,
     pub yanked_entry_path: Option<PathBuf>,
+    pub is_cut: bool,
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
-    pub dir_preview: DirPreview,
-    pub popup_mode: PopupMode,
+    pub preview_contents: Preview,
+    pub input_mode: InputMode,
+    pub bookmarks: Bookmarks,
+    pub config: Config,
 }
 
 // pub functions
 impl App {
-    pub fn new(path: PathBuf) -> App {
-        let config = Config::load().unwrap();
-        let bookmarks = Bookmarks::load().unwrap();
+    pub fn new(path: PathBuf) -> color_eyre::Result<App> {
+        let config = Config::load()?;
+        let bookmarks = Bookmarks::load()?;
 
         let mut app = App {
             running_state: RunningState::Running,
-            config,
-            bookmarks,
             list_state: ListState::default(),
-            current_dir: path.clone(),
+            cwd: path.clone(),
             yanked_entry_path: None,
+            is_cut: false,
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
-            dir_preview: DirPreview::File {
+            preview_contents: Preview::File {
                 contents: String::new(),
             },
-            popup_mode: PopupMode::None,
+            input_mode: InputMode::None,
+            bookmarks,
+            config,
         };
         app.update_all_entries();
-        app
+        Ok(app)
     }
 
     pub fn run(&mut self) -> color_eyre::Result<()> {
@@ -104,19 +106,20 @@ impl App {
 // App path manip functions
 impl App {
     fn update_cwd(&mut self, path: PathBuf) {
-        self.current_dir = path;
+        self.cwd = path;
         self.list_state.select(Some(0));
         self.update_all_entries();
     }
 
     fn update_cwd_entries(&mut self) {
         self.cwd_entries =
-            get_entries(self.config.ui.show_hidden, self.current_dir.as_path()).unwrap();
+            get_entries(self.config.ui.show_hidden, self.cwd.as_path()).unwrap_or_default(); // On error, just use empty vec
     }
 
     fn update_parent_dir_entries(&mut self) {
-        if let Some(parent) = self.current_dir.parent() {
-            self.parent_dir_entries = get_entries(self.config.ui.show_hidden, parent).unwrap();
+        if let Some(parent) = self.cwd.parent() {
+            self.parent_dir_entries =
+                get_entries(self.config.ui.show_hidden, parent).unwrap_or_default();
         } else {
             self.parent_dir_entries.clear();
         }
@@ -126,19 +129,13 @@ impl App {
         if let Some(selected_idx) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(selected_idx) {
                 if entry.is_dir {
-                    self.dir_preview = DirPreview::Directory {
-                        entries: get_entries(self.config.ui.show_hidden, &entry.path)
-                            .unwrap_or_default(),
-                    }
+                    let entries =
+                        get_entries(self.config.ui.show_hidden, &entry.path).unwrap_or_default();
+                    self.preview_contents = Preview::Directory { entries }
                 } else {
-                    // this is basically the solution for files that are not utf8 since i can't
-                    // figure out how to filter the entries out
-                    // read as utf8 or fallback message
-                    let contents = match fs::read_to_string(&entry.path) {
-                        Ok(text) => text,
-                        Err(_) => "[Binary file or non-UTF-8 content]".to_string(),
-                    };
-                    self.dir_preview = DirPreview::File { contents }
+                    let contents = fs::read_to_string(&entry.path)
+                        .unwrap_or_else(|_| "[Binary file or non-UTF-8 content]".to_string());
+                    self.preview_contents = Preview::File { contents }
                 }
             }
         }
@@ -156,7 +153,7 @@ impl App {
     fn handle_input(&mut self) -> color_eyre::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                if self.popup_mode != PopupMode::None {
+                if self.input_mode != InputMode::None {
                     self.handle_popup_input(key.code)?;
                 } else {
                     match key.code {
@@ -174,11 +171,12 @@ impl App {
                         KeyCode::Char('r') => self.open_rename_popup(),
                         KeyCode::Char('m') => self.open_new_entry_popup(),
                         KeyCode::Char('b') => self.open_new_bookmark_popup(),
-                        KeyCode::Char(val) if val == self.config.keybindings.copy => self.yank(),
-                        KeyCode::Char(val) if val == self.config.keybindings.paste => self.paste(),
+                        KeyCode::Char('y') => self.yank(false),
+                        KeyCode::Char('x') => self.yank(true),
+                        KeyCode::Char('p') => self.paste(),
                         KeyCode::Char('d') => {
                             if self.config.behavior.confirm_delete == false {
-                                self.popup_mode = PopupMode::Delete;
+                                self.input_mode = InputMode::Delete;
                                 self.execute_popup_action()?;
                             } else {
                                 self.open_delete_popup()
@@ -193,13 +191,13 @@ impl App {
     }
 
     fn handle_popup_input(&mut self, key_code: KeyCode) -> color_eyre::Result<()> {
-        match &mut self.popup_mode {
-            PopupMode::None => {}
-            PopupMode::Rename { input }
-            | PopupMode::NewEntry { input }
-            | PopupMode::Bookmark { input } => match key_code {
+        match &mut self.input_mode {
+            InputMode::None => {}
+            InputMode::Rename { input }
+            | InputMode::NewEntry { input }
+            | InputMode::Bookmark { input } => match key_code {
                 KeyCode::Esc => {
-                    self.popup_mode = PopupMode::None;
+                    self.input_mode = InputMode::None;
                 }
                 KeyCode::Enter => {
                     self.execute_popup_action()?;
@@ -212,9 +210,9 @@ impl App {
                 }
                 _ => {}
             },
-            PopupMode::Delete => match key_code {
+            InputMode::Delete => match key_code {
                 KeyCode::Esc | KeyCode::Char('n') => {
-                    self.popup_mode = PopupMode::None;
+                    self.input_mode = InputMode::None;
                 }
                 KeyCode::Char('y') | KeyCode::Enter | KeyCode::Char('d') => {
                     self.execute_popup_action()?;
@@ -224,30 +222,36 @@ impl App {
         }
         Ok(())
     }
+    fn cut(&mut self) {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                self.yanked_entry_path = Some(entry.path.clone());
+                self.is_cut = true; // Cut
+            }
+        }
+    }
 
     fn execute_popup_action(&mut self) -> color_eyre::Result<()> {
-        match &self.popup_mode {
-            PopupMode::Rename { input } => {
+        match &self.input_mode {
+            InputMode::Rename { input } => {
                 if let Some(i) = self.list_state.selected() {
                     if let Some(entry) = self.cwd_entries.get(i) {
-                        let new_path = self.current_dir.join(input);
+                        let new_path = self.cwd.join(input);
                         fs::rename(&entry.path, &new_path)?;
                         self.update_all_entries();
                     }
                 }
             }
-            PopupMode::NewEntry { input } => {
+            InputMode::NewEntry { input } => {
+                let new_path = self.cwd.join(input);
                 if input.contains('.') {
-                    let new_path = self.current_dir.join(input);
                     fs::File::create(&new_path)?;
-                    self.update_all_entries();
                 } else {
-                    let new_path = self.current_dir.join(input);
-                    fs::create_dir(&new_path)?;
-                    self.update_all_entries();
+                    fs::create_dir_all(&new_path)?;
                 }
+                self.update_all_entries();
             }
-            PopupMode::Delete { .. } => {
+            InputMode::Delete { .. } => {
                 if let Some(i) = self.list_state.selected() {
                     if let Some(entry) = self.cwd_entries.get(i) {
                         if entry.is_dir {
@@ -259,25 +263,25 @@ impl App {
                     }
                 }
             }
-            PopupMode::Bookmark { input } => {
+            InputMode::Bookmark { input } => {
                 if let Some(bookmark) = self.bookmarks.get(input) {
                     if bookmark.path.exists() {
                         self.update_cwd(bookmark.path.clone());
                     }
                 } else {
-                    self.bookmarks.add(input.clone(), self.current_dir.clone());
+                    self.bookmarks.add(input.clone(), self.cwd.clone());
                 }
             }
-            PopupMode::None => {}
+            InputMode::None => {}
         }
-        self.popup_mode = PopupMode::None;
+        self.input_mode = InputMode::None;
         Ok(())
     }
 
     fn open_rename_popup(&mut self) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
-                self.popup_mode = PopupMode::Rename {
+                self.input_mode = InputMode::Rename {
                     input: entry.name.clone(),
                 };
             }
@@ -285,25 +289,26 @@ impl App {
     }
 
     fn open_delete_popup(&mut self) {
-        self.popup_mode = PopupMode::Delete;
+        self.input_mode = InputMode::Delete;
     }
 
     fn open_new_entry_popup(&mut self) {
-        self.popup_mode = PopupMode::NewEntry {
+        self.input_mode = InputMode::NewEntry {
             input: String::new(),
         };
     }
 
     fn open_new_bookmark_popup(&mut self) {
-        self.popup_mode = PopupMode::Bookmark {
+        self.input_mode = InputMode::Bookmark {
             input: String::new(),
         };
     }
 
-    fn yank(&mut self) {
+    fn yank(&mut self, cut: bool) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 self.yanked_entry_path = Some(entry.path.clone());
+                self.is_cut = cut;
             }
         }
     }
@@ -311,15 +316,50 @@ impl App {
     fn paste(&mut self) {
         if let Some(source) = &self.yanked_entry_path {
             if let Some(filename) = source.file_name() {
-                let destination = self.current_dir.join(filename);
-                if source.is_file() {
-                    _ = fs::copy(source, &destination);
-                } else if source.is_dir() {
-                    _ = copy_dir_recursively(&source.as_path(), &destination);
+                let mut destination = self.cwd.join(filename);
+
+                if destination.exists() {
+                    let stem = destination
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned();
+                    let ext = destination
+                        .extension()
+                        .map(|e| format!(".{}", e.to_string_lossy()))
+                        .unwrap_or_default();
+
+                    let mut counter = 1;
+                    loop {
+                        destination = self.cwd.join(format!("{}_copy{}{}", stem, counter, ext));
+                        if !destination.exists() {
+                            break;
+                        }
+                        counter += 1;
+                    }
                 }
 
-                self.yanked_entry_path = None;
-                self.update_all_entries();
+                let result = if source.is_file() {
+                    fs::copy(source, &destination).map(|_| ())
+                } else if source.is_dir() {
+                    copy_dir_recursively(source, &destination) // Changed: removed .as_path()
+                } else {
+                    return;
+                };
+
+                if result.is_ok() {
+                    if self.is_cut {
+                        if source.is_file() {
+                            let _ = fs::remove_file(source);
+                        } else if source.is_dir() {
+                            let _ = fs::remove_dir_all(source);
+                        }
+                    }
+
+                    self.yanked_entry_path = None;
+                    self.is_cut = false;
+                    self.update_all_entries();
+                }
             }
         }
     }
@@ -366,8 +406,8 @@ impl App {
     }
 
     fn up_dir_level(&mut self) {
-        if self.current_dir.parent().is_some() {
-            self.update_cwd(self.current_dir.parent().unwrap().to_path_buf());
+        if let Some(parent) = self.cwd.parent() {
+            self.update_cwd(parent.to_path_buf());
         }
     }
 }

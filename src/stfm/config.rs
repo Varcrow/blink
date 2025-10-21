@@ -92,19 +92,11 @@ impl Default for UiConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Keybindings {
-    #[serde(default = "default_copy")]
-    pub copy: char,
-    #[serde(default = "default_paste")]
-    pub paste: char,
-}
+pub struct Keybindings {}
 
 impl Default for Keybindings {
     fn default() -> Self {
-        Self {
-            copy: default_copy(),
-            paste: default_paste(),
-        }
+        Self {}
     }
 }
 
@@ -125,14 +117,6 @@ impl Default for Behavior {
 //default functions
 fn default_show_hidden() -> bool {
     true
-}
-
-fn default_copy() -> char {
-    'y'
-}
-
-fn default_paste() -> char {
-    'p'
 }
 
 fn default_confirm_delete() -> bool {

@@ -1,4 +1,4 @@
-use crate::stfm::app::{App, DirPreview, PopupMode};
+use crate::stfm::app::{App, InputMode, Preview};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -28,14 +28,14 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     render_preview_dir(app, frame, columns[2]);
     render_status_bar(app, frame, outer_layout[2]);
 
-    if app.popup_mode != PopupMode::None {
+    if app.input_mode != InputMode::None {
         render_popup(app, frame);
     }
 }
 
 fn render_current_dir_text(app: &App, frame: &mut Frame, area: Rect) {
-    let dir_text = Paragraph::new(format!(" {}", app.current_dir.display()))
-        .style(Style::default().fg(Color::White));
+    let dir_text =
+        Paragraph::new(format!(" {}", app.cwd.display())).style(Style::default().fg(Color::White));
     frame.render_widget(dir_text, area);
 }
 
@@ -98,13 +98,13 @@ fn render_current_dir(app: &mut App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
-    match &app.dir_preview {
-        DirPreview::File { contents } => {
+    match &app.preview_contents {
+        Preview::File { contents } => {
             let file_contents =
                 Paragraph::new(contents.clone()).block(Block::default().borders(Borders::ALL));
             frame.render_widget(file_contents, area);
         }
-        DirPreview::Directory { entries } => {
+        Preview::Directory { entries } => {
             let preview_contents: Vec<ListItem> = entries
                 .iter()
                 .map(|entry| {
@@ -142,7 +142,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     };
 
     let status = format!(
-        " 📁 {} dirs | 📄 {} files | {} | y:yank p:paste d:delete r:rename m:mkdir n:new q:quit",
+        " 📁 {} dirs | 📄 {} files | {}",
         dir_count, file_count, yank_status
     );
 
@@ -154,12 +154,12 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
 fn render_popup(app: &App, frame: &mut Frame) {
     let area = centered_rect(60, 20, frame.area());
 
-    let (title, content) = match &app.popup_mode {
-        PopupMode::Rename { input } => ("Rename", format!("New name: {}", input)),
-        PopupMode::NewEntry { input } => ("New Entry", format!("File name: {}", input)),
-        PopupMode::Bookmark { input } => ("Bookmark", format!("name: {}", input)),
-        PopupMode::Delete { .. } => ("Delete", "Are you sure? (y/n)".to_string()),
-        PopupMode::None => return,
+    let (title, content) = match &app.input_mode {
+        InputMode::Rename { input } => ("Rename", format!("New name: {}", input)),
+        InputMode::NewEntry { input } => ("New Entry", format!("File name: {}", input)),
+        InputMode::Bookmark { input } => ("Bookmark", format!("name: {}", input)),
+        InputMode::Delete { .. } => ("Delete", "Are you sure? (y/n)".to_string()),
+        InputMode::None => return,
     };
 
     let popup = Paragraph::new(content)
