@@ -38,10 +38,10 @@ pub enum InputMode {
     #[default]
     None,
     Delete,
-    BookmarkCreation {
-        tag: String,
+    NewBookmark {
+        input: String,
     },
-    Bookmarks {
+    ListBookmarks {
         input: String,
     },
     Rename {
@@ -56,6 +56,7 @@ pub enum InputMode {
 pub struct App {
     running_state: RunningState,
     pub list_state: ListState,
+    pub bookmark_list_state: ListState,
     pub cwd: PathBuf,
     pub yanked_entry_path: Option<PathBuf>,
     pub is_cut: bool,
@@ -76,6 +77,7 @@ impl App {
         let mut app = App {
             running_state: RunningState::Running,
             list_state: ListState::default(),
+            bookmark_list_state: ListState::default(),
             cwd: path.clone(),
             yanked_entry_path: None,
             is_cut: false,
@@ -173,7 +175,8 @@ impl App {
                         // file operations
                         KeyCode::Char('r') => self.open_rename_popup(),
                         KeyCode::Char('m') => self.open_new_entry_popup(),
-                        KeyCode::Char('b') => self.open_bookmark_popup(),
+                        KeyCode::Char('b') => self.open_bookmark_list_popup(),
+                        KeyCode::Char('B') => self.open_new_bookmark_popup(),
                         KeyCode::Char('y') => self.yank(false),
                         KeyCode::Char('x') => self.yank(true),
                         KeyCode::Char('p') => self.paste(),
@@ -198,7 +201,7 @@ impl App {
             InputMode::None => {}
             InputMode::Rename { input }
             | InputMode::NewEntry { input }
-            | InputMode::Bookmarks { input } => match key_code {
+            | InputMode::NewBookmark { input } => match key_code {
                 KeyCode::Esc => {
                     self.input_mode = InputMode::None;
                 }
@@ -213,12 +216,71 @@ impl App {
                 }
                 _ => {}
             },
-            InputMode::BookmarkCreation{ tag } => match key_code {
-                KeyCode::Esc | KeyCode::Char('n') => {
+            InputMode::ListBookmarks { input } => match key_code {
+                KeyCode::Esc | KeyCode::Char('q') => {
                     self.input_mode = InputMode::None;
                 }
-                KeyCode::Char('y') | KeyCode::Enter => {
-                    self.execute_popup_action()?;
+                KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => {
+                    // Jump to selected bookmark
+                    if let Some(i) = self.bookmark_list_state.selected() {
+                        let bookmarks: Vec<_> = self.bookmarks.list();
+                        if let Some((tag, bookmark)) = bookmarks.get(i) {
+                            if bookmark.path.exists() {
+                                self.update_cwd(bookmark.path.clone());
+                                self.input_mode = InputMode::None;
+                            }
+                        }
+                    }
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    let bookmarks_count = self.bookmarks.list().len();
+                    if bookmarks_count > 0 {
+                        let i = match self.bookmark_list_state.selected() {
+                            Some(i) => {
+                                if i >= bookmarks_count - 1 {
+                                    0
+                                } else {
+                                    i + 1
+                                }
+                            }
+                            None => 0,
+                        };
+                        self.bookmark_list_state.select(Some(i));
+                    }
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    let bookmarks_count = self.bookmarks.list().len();
+                    if bookmarks_count > 0 {
+                        let i = match self.bookmark_list_state.selected() {
+                            Some(i) => {
+                                if i == 0 {
+                                    bookmarks_count - 1
+                                } else {
+                                    i - 1
+                                }
+                            }
+                            None => 0,
+                        };
+                        self.bookmark_list_state.select(Some(i));
+                    }
+                }
+                KeyCode::Char('d') => {
+                    // Delete selected bookmark
+                    if let Some(i) = self.bookmark_list_state.selected() {
+                        let bookmarks: Vec<_> = self.bookmarks.list();
+                        if let Some((tag, _)) = bookmarks.get(i) {
+                            self.bookmarks.remove(tag);
+                            let _ = self.bookmarks.save();
+
+                            // Adjust selection
+                            let new_count = self.bookmarks.list().len();
+                            if new_count == 0 {
+                                self.bookmark_list_state.select(None);
+                            } else if i >= new_count {
+                                self.bookmark_list_state.select(Some(new_count - 1));
+                            }
+                        }
+                    }
                 }
                 _ => {}
             },
@@ -267,21 +329,22 @@ impl App {
                     }
                 }
             }
-            InputMode::None => {}
-            InputMode::Bookmarks { input } => {
-                if let Some(bookmark) = self.bookmarks.get(input) {
-                    if bookmark.path.exists() {
-                        self.update_cwd(bookmark.path.clone());
+            InputMode::ListBookmarks { input } => {
+                if let Some(i) = self.bookmark_list_state.selected() {
+                    let bookmarks: Vec<_> = self.bookmarks.list();
+                    if let Some((tag, bookmark)) = bookmarks.get(i) {
+                        if bookmark.path.exists() {
+                            self.update_cwd(bookmark.path.clone());
+                            self.input_mode = InputMode::None;
+                        }
                     }
-                } else {
-                    self.input_mode = InputMode::BookmarkCreation { tag: input.clone() };
-                    return Ok(());
                 }
             }
-            InputMode::BookmarkCreation { tag } => {
-                self.bookmarks.add(tag.clone(), self.cwd.clone());
+            InputMode::NewBookmark { input } => {
+                self.bookmarks.add(input.clone(), self.cwd.clone());
                 let _ = self.bookmarks.save();
             }
+            InputMode::None => {}
         }
         self.input_mode = InputMode::None;
         Ok(())
@@ -307,8 +370,15 @@ impl App {
         };
     }
 
-    fn open_bookmark_popup(&mut self) {
-        self.input_mode = InputMode::Bookmarks {
+    fn open_bookmark_list_popup(&mut self) {
+        self.input_mode = InputMode::ListBookmarks {
+            input: String::new(),
+        };
+        self.bookmark_list_state.select(Some(0));
+    }
+
+    fn open_new_bookmark_popup(&mut self) {
+        self.input_mode = InputMode::NewBookmark {
             input: String::new(),
         };
     }

@@ -161,20 +161,19 @@ fn render_popup(app: &App, frame: &mut Frame) {
         }
         InputMode::NewEntry { input } => {
             let area = centered_rect(60, 15, frame.area());
-            let title = "Rename";
+            let title = "Create entry";
             let content = format!("Entry name: {}", input);
             (area, title, content)
         }
-        InputMode::Bookmarks { input } => {
-            let area = centered_rect(60, 15, frame.area());
-            let title = "Bookmark";
-            let content = format!("Tag: {}", input);
+        InputMode::ListBookmarks { input } => {
+            let area = centered_rect(60, 60, frame.area());
+            let title = "List bookmarks";
             (area, title, content)
         }
-        InputMode::BookmarkCreation { tag } => {
+        InputMode::NewBookmark { input } => {
             let area = centered_rect(60, 15, frame.area());
-            let title = "Bookmark";
-            let content = format!("Create bookmark \"{}\" with cwd?: y/n", tag);
+            let title = "Create bookmark";
+            let content = format!("Name: {}", input);
             (area, title, content)
         }
         InputMode::Delete => {
