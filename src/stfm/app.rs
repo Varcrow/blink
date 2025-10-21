@@ -1,5 +1,8 @@
 use crate::stfm::{
-    bookmarks::Bookmarks, config::Config, entries::{get_entries, FileEntry}, rendering::render
+    bookmarks::Bookmarks,
+    config::Config,
+    entries::{FileEntry, get_entries},
+    rendering::render,
 };
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
@@ -39,6 +42,9 @@ pub enum PopupMode {
         input: String,
     },
     NewEntry {
+        input: String,
+    },
+    Bookmark {
         input: String,
     },
 }
@@ -167,6 +173,7 @@ impl App {
                         // file operations
                         KeyCode::Char('r') => self.open_rename_popup(),
                         KeyCode::Char('m') => self.open_new_entry_popup(),
+                        KeyCode::Char('b') => self.open_new_bookmark_popup(),
                         KeyCode::Char(val) if val == self.config.keybindings.copy => self.yank(),
                         KeyCode::Char(val) if val == self.config.keybindings.paste => self.paste(),
                         KeyCode::Char('d') => {
@@ -188,7 +195,9 @@ impl App {
     fn handle_popup_input(&mut self, key_code: KeyCode) -> color_eyre::Result<()> {
         match &mut self.popup_mode {
             PopupMode::None => {}
-            PopupMode::Rename { input } | PopupMode::NewEntry { input } => match key_code {
+            PopupMode::Rename { input }
+            | PopupMode::NewEntry { input }
+            | PopupMode::Bookmark { input } => match key_code {
                 KeyCode::Esc => {
                     self.popup_mode = PopupMode::None;
                 }
@@ -227,8 +236,6 @@ impl App {
                     }
                 }
             }
-            // SO if the input contains a . somewhere it's a file :P
-            // this does not support creating hidden folders yet, so stuff like .config
             PopupMode::NewEntry { input } => {
                 if input.contains('.') {
                     let new_path = self.current_dir.join(input);
@@ -250,6 +257,15 @@ impl App {
                         }
                         self.update_all_entries();
                     }
+                }
+            }
+            PopupMode::Bookmark { input } => {
+                if let Some(bookmark) = self.bookmarks.get(input) {
+                    if bookmark.path.exists() {
+                        self.update_cwd(bookmark.path.clone());
+                    }
+                } else {
+                    self.bookmarks.add(input.clone(), self.current_dir.clone());
                 }
             }
             PopupMode::None => {}
@@ -274,6 +290,12 @@ impl App {
 
     fn open_new_entry_popup(&mut self) {
         self.popup_mode = PopupMode::NewEntry {
+            input: String::new(),
+        };
+    }
+
+    fn open_new_bookmark_popup(&mut self) {
+        self.popup_mode = PopupMode::Bookmark {
             input: String::new(),
         };
     }

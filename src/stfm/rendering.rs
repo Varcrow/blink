@@ -34,7 +34,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 }
 
 fn render_current_dir_text(app: &App, frame: &mut Frame, area: Rect) {
-    let dir_text = Paragraph::new(format!(" {}", app.current_dir.display())).style(Style::default().fg(Color::White));
+    let dir_text = Paragraph::new(format!(" {}", app.current_dir.display()))
+        .style(Style::default().fg(Color::White));
     frame.render_widget(dir_text, area);
 }
 
@@ -156,6 +157,7 @@ fn render_popup(app: &App, frame: &mut Frame) {
     let (title, content) = match &app.popup_mode {
         PopupMode::Rename { input } => ("Rename", format!("New name: {}", input)),
         PopupMode::NewEntry { input } => ("New Entry", format!("File name: {}", input)),
+        PopupMode::Bookmark { input } => ("Bookmark", format!("name: {}", input)),
         PopupMode::Delete { .. } => ("Delete", "Are you sure? (y/n)".to_string()),
         PopupMode::None => return,
     };
