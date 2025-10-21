@@ -157,8 +157,7 @@ fn render_popup(app: &App, frame: &mut Frame) {
     let (title, content) = match &app.input_mode {
         InputMode::Rename { input } => ("Rename", format!("New name: {}", input)),
         InputMode::NewEntry { input } => ("New Entry", format!("File name: {}", input)),
-        InputMode::Bookmark { input } => ("Bookmark", format!("name: {}", input)),
-        InputMode::Delete { .. } => ("Delete", "Are you sure? (y/n)".to_string()),
+        InputMode::Delete => ("Delete", "Are you sure? (y/n)".to_string()),
         InputMode::None => return,
     };
 

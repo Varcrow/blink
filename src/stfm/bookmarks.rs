@@ -44,7 +44,7 @@ impl Bookmarks {
     fn bookmarks_path() -> color_eyre::Result<PathBuf> {
         use directories::ProjectDirs;
 
-        let proj_dirs = ProjectDirs::from("com", "yourname", "blink")
+        let proj_dirs = ProjectDirs::from("com", "Varcrow", "blink")
             .ok_or_else(|| color_eyre::eyre::eyre!("Could not determine config directory"))?;
 
         Ok(proj_dirs.config_dir().join("bookmarks.toml"))
