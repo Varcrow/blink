@@ -1,5 +1,8 @@
-use crate::stfm::{app::{App, RunningState}, rendering::render_main_state};
-use ratatui::{crossterm::event::KeyCode, widgets::ListState, Frame};
+use crate::stfm::{
+    app::{App, RunningState},
+    rendering::{render_bookmark_list, render_confirm_delete_popup, render_input_popup, render_main_state},
+};
+use ratatui::{Frame, crossterm::event::KeyCode, widgets::ListState};
 
 // State trait
 pub trait State {
@@ -93,7 +96,8 @@ impl State for DeletePathState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        todo!()
+        render_main_state(app, frame);
+        render_confirm_delete_popup(frame);
     }
 }
 
@@ -118,7 +122,12 @@ impl State for NewPathState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        todo!()
+        render_main_state(app, frame);
+        render_input_popup(
+            frame,
+            "New entry".to_string(),
+            format!("Name: {}", self.input),
+        )
     }
 }
 
@@ -143,7 +152,8 @@ impl State for RenamePathState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        todo!()
+        render_main_state(app, frame);
+        render_input_popup(frame, "Rename".to_string(), format!("Name: {}", self.input))
     }
 }
 
@@ -168,7 +178,12 @@ impl State for NewBookmarkState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        todo!()
+        render_main_state(app, frame);
+        render_input_popup(
+            frame,
+            "New bookmark".to_string(),
+            format!("Name: {}", self.input),
+        )
     }
 }
 
@@ -178,8 +193,8 @@ impl State for BookmarkListState {
             KeyCode::Esc => Box::new(MainState),
             KeyCode::Enter => {
                 app.jump_to_bookmark(self.list_state.selected().unwrap_or_default());
-                Box::new(MainState)}
-            ,
+                Box::new(MainState)
+            }
             KeyCode::Char('k') => {
                 let i = match self.list_state.selected() {
                     Some(i) => {
@@ -213,6 +228,7 @@ impl State for BookmarkListState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        todo!()
+        render_main_state(app, frame);
+        render_bookmark_list(app, frame, &mut self.list_state.clone());
     }
 }

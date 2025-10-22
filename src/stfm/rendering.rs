@@ -1,10 +1,13 @@
-use crate::stfm::app::{App, Preview};
+use crate::stfm::{
+    app::{App, Preview},
+    entries::FileEntry,
+};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
 };
 
 pub fn render_main_state(app: &App, frame: &mut Frame) {
@@ -66,7 +69,7 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
         .cwd_entries
         .iter()
         .map(|entry| {
-            let icon = if entry.is_dir { "📁" } else { "📄" };
+            let icon = get_file_icon(entry);
             let style = if entry.is_dir {
                 Style::default().fg(Color::Cyan)
             } else {
@@ -104,7 +107,7 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
             let preview_contents: Vec<ListItem> = entries
                 .iter()
                 .map(|entry| {
-                    let icon = if entry.is_dir { "📁" } else { "📄" };
+                    let icon = get_file_icon(entry);
                     let style = if entry.is_dir {
                         Style::default().fg(Color::Cyan)
                     } else {
@@ -148,19 +151,106 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
 }
 
 // Universal function for states that need to render input
-fn render_input_popup(frame: &mut Frame, title: String, content: String) {
-    let area = centered_rect(60, 15, frame.area());
+pub fn render_input_popup(frame: &mut Frame, title: String, content: String) {
+    let area = centered_rect(30, 15, frame.area());
     let popup = Paragraph::new(content)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title(title)
+                .title_alignment(Alignment::Center)
                 .style(Style::default()),
         )
         .alignment(Alignment::Center);
 
     frame.render_widget(Clear, area);
     frame.render_widget(popup, area);
+}
+
+pub fn render_confirm_delete_popup(frame: &mut Frame) {
+    let area = centered_rect(30, 15, frame.area());
+    let popup = Paragraph::new("y / n")
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Delete")
+                .title_alignment(Alignment::Center)
+                .style(Style::default()),
+        )
+        .alignment(Alignment::Center);
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(popup, area);
+}
+
+pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListState) {
+    let area = centered_rect(30, 30, frame.area());
+
+    let items: Vec<ListItem> = app
+        .bookmarks
+        .list()
+        .iter()
+        .map(|(name, entry)| {
+            let line = Line::from(vec![Span::raw(format!(
+                "{}{}: {}",
+                "🔖".to_string(),
+                name,
+                entry.path.to_string_lossy()
+            ))]);
+            ListItem::new(line)
+        })
+        .collect();
+
+    let bookmark_list = List::new(items)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Bookmarks")
+                .title_alignment(Alignment::Center),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ");
+
+    frame.render_widget(Clear, area);
+    frame.render_stateful_widget(bookmark_list, area, list_state);
+}
+
+// Requires nerd font in terminal
+// Considering using something that doesnt require NF
+fn get_file_icon(entry: &FileEntry) -> &'static str {
+    if entry.is_dir {
+        return "";
+    }
+
+    let extension = entry
+        .path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("");
+
+    match extension {
+        "rs" => "",
+        "py" => "",
+        "js" | "jsx" => "",
+        "ts" | "tsx" => "",
+        "go" => "󰟓",
+        "c" | "cpp" | "h" | "hpp" => "",
+        "java" => "",
+        "html" => "",
+        "css" | "scss" => "",
+        "json" => "",
+        "md" => "",
+        "txt" => "󰦨",
+        "pdf" => "",
+        "png" | "jpg" | "jpeg" | "gif" => "",
+        "zip" | "tar" | "gz" => "",
+        "git" | "gitignore" => "",
+        _ => "",
+    }
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
