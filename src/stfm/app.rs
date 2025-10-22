@@ -12,7 +12,7 @@ use std::{fs, path::PathBuf, time::Duration};
 use std::{io, path::Path};
 
 #[derive(Debug, Default, PartialEq, Eq)]
-enum RunningState {
+pub enum RunningState {
     #[default]
     Running,
     Done,
@@ -54,7 +54,7 @@ pub enum InputMode {
 
 #[derive(Debug, Default)]
 pub struct App {
-    running_state: RunningState,
+    pub(crate) running_state: RunningState,
     pub list_state: ListState,
     pub bookmark_list_state: ListState,
     pub cwd: PathBuf,
@@ -100,7 +100,11 @@ impl App {
             terminal.draw(|frame| render(self, frame))?;
 
             if event::poll(Duration::from_millis(100))? {
-                self.handle_input()?;
+                if let Event::Key(key) = event::read()? {
+                    if key.kind == KeyEventKind::Press {
+                        self.handle_input()?; // pass key into handle input for state
+                    }
+                }
             }
         }
         ratatui::restore();
@@ -350,40 +354,40 @@ impl App {
         Ok(())
     }
 
-    fn open_rename_popup(&mut self) {
+    pub fn new_path(&mut self, name: &String) {
+        let new_path = self.cwd.join(name);
+        if name.contains('.') {
+            fs::File::create(&new_path);
+        } else {
+            fs::create_dir_all(&new_path);
+        }
+        self.update_all_entries();
+    }
+
+    pub fn rename_current_selected_path(&mut self, new_name: &String) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
-                self.input_mode = InputMode::Rename {
-                    input: entry.name.clone(),
-                };
+                let new_path = self.cwd.join(new_name);
+                fs::rename(&entry.path, &new_path);
+                self.update_all_entries();
             }
         }
     }
 
-    fn open_delete_popup(&mut self) {
-        self.input_mode = InputMode::Delete;
+    pub fn delete_current_selection(&mut self) {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                if entry.is_dir {
+                    fs::remove_dir_all(&entry.path);
+                } else {
+                    fs::remove_file(&entry.path);
+                }
+                self.update_all_entries();
+            }
+        }
     }
 
-    fn open_new_entry_popup(&mut self) {
-        self.input_mode = InputMode::NewEntry {
-            input: String::new(),
-        };
-    }
-
-    fn open_bookmark_list_popup(&mut self) {
-        self.input_mode = InputMode::ListBookmarks {
-            input: String::new(),
-        };
-        self.bookmark_list_state.select(Some(0));
-    }
-
-    fn open_new_bookmark_popup(&mut self) {
-        self.input_mode = InputMode::NewBookmark {
-            input: String::new(),
-        };
-    }
-
-    fn yank(&mut self, cut: bool) {
+    pub fn yank_current_selection(&mut self, cut: bool) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 self.yanked_entry_path = Some(entry.path.clone());
@@ -392,7 +396,7 @@ impl App {
         }
     }
 
-    fn paste(&mut self) {
+    pub fn paste_yanked_path(&mut self) {
         if let Some(source) = &self.yanked_entry_path {
             if let Some(filename) = source.file_name() {
                 let mut destination = self.cwd.join(filename);
@@ -421,7 +425,7 @@ impl App {
                 let result = if source.is_file() {
                     fs::copy(source, &destination).map(|_| ())
                 } else if source.is_dir() {
-                    copy_dir_recursively(source, &destination)
+                    self.copy_directory_recursively(source, &destination)
                 } else {
                     return;
                 };
@@ -443,7 +447,7 @@ impl App {
         }
     }
 
-    fn next(&mut self) {
+    pub fn move_forward_in_cwd_list(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i >= self.cwd_entries.len() - 1 {
@@ -458,7 +462,7 @@ impl App {
         self.update_preview_contents();
     }
 
-    fn previous(&mut self) {
+    pub fn move_back_in_cwd_list(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -473,7 +477,7 @@ impl App {
         self.update_preview_contents();
     }
 
-    fn enter_selected(&mut self) {
+    pub fn enter_current_path_selection(&mut self) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 if entry.is_dir {
@@ -484,27 +488,27 @@ impl App {
         }
     }
 
-    fn up_dir_level(&mut self) {
+    pub fn go_up_one_directory_level(&mut self) {
         if let Some(parent) = self.cwd.parent() {
             self.update_cwd(parent.to_path_buf());
         }
     }
-}
 
-fn copy_dir_recursively(src: &Path, dst: &Path) -> io::Result<()> {
-    fs::create_dir_all(dst)?;
+    pub fn copy_directory_recursively(&self, src: &Path, dst: &Path) -> io::Result<()> {
+        fs::create_dir_all(dst)?;
 
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
+        for entry in fs::read_dir(src)? {
+            let entry = entry?;
+            let src_path = entry.path();
+            let dst_path = dst.join(entry.file_name());
 
-        if src_path.is_dir() {
-            copy_dir_recursively(&src_path, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path)?;
+            if src_path.is_dir() {
+                self.copy_directory_recursively(&src_path, &dst_path)?;
+            } else {
+                fs::copy(&src_path, &dst_path)?;
+            }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
