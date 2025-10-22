@@ -32,16 +32,28 @@ pub struct RenamePathState {
 impl State for MainState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
-            KeyCode::Esc | KeyCode::Char('q') => app.running_state = RunningState::Done,
-            KeyCode::Down | KeyCode::Char('j') => app.move_forward_in_cwd_list(),
-            KeyCode::Up | KeyCode::Char('k') => app.move_back_in_cwd_list(),
-            KeyCode::Left | KeyCode::Char('h') => app.go_up_one_directory_level(),
+            KeyCode::Esc | KeyCode::Char('q') => {
+                app.running_state = RunningState::Done;
+                self
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                app.move_forward_in_cwd_list();
+                self
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                app.move_back_in_cwd_list();
+                self
+            }
+            KeyCode::Left | KeyCode::Char('h') => {
+                app.go_up_one_directory_level();
+                self
+            }
             KeyCode::Right | KeyCode::Char('l') => {
                 app.enter_current_path_selection();
+                self
             }
-            _ => {}
+            _ => self,
         }
-        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
@@ -52,11 +64,13 @@ impl State for MainState {
 impl State for DeletePathState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
-            KeyCode::Esc | KeyCode::Char('q') => app.running_state = RunningState::Done,
-            KeyCode::Enter => app.delete_current_selection(),
-            _ => {}
+            KeyCode::Esc | KeyCode::Char('q') => Box::new(MainState),
+            KeyCode::Enter => {
+                app.delete_current_selection();
+                Box::new(MainState)
+            }
+            _ => self,
         }
-        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
