@@ -1,17 +1,6 @@
-use crate::stfm::{
-    app::{App, RunningState},
-    bookmarks::Bookmarks,
-    config::Config,
-    entries::{FileEntry, get_entries},
-    rendering::render,
-};
+use crate::stfm::app::{App, RunningState};
 use color_eyre::config::Frame;
-use ratatui::{
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    widgets::ListState,
-};
-use std::{fs, path::PathBuf, time::Duration};
-use std::{io, path::Path};
+use ratatui::{crossterm::event::KeyCode, widgets::ListState};
 
 // State trait
 pub trait State {
@@ -27,6 +16,12 @@ pub struct NewPathState {
 }
 pub struct RenamePathState {
     input: String,
+}
+pub struct NewBookmarkState {
+    input: String,
+}
+pub struct BookmarkListState {
+    list_state: ListState,
 }
 
 impl State for MainState {
@@ -52,6 +47,31 @@ impl State for MainState {
                 app.enter_current_path_selection();
                 self
             }
+            KeyCode::Char('y') => {
+                app.yank_current_selection(false);
+                self
+            }
+            KeyCode::Char('x') => {
+                app.yank_current_selection(true);
+                self
+            }
+            KeyCode::Char('p') => {
+                app.paste_yanked_path();
+                self
+            }
+            KeyCode::Char('r') => Box::new(RenamePathState {
+                input: String::new(),
+            }),
+            KeyCode::Char('m') => Box::new(NewPathState {
+                input: String::new(),
+            }),
+            KeyCode::Char('B') => Box::new(NewBookmarkState {
+                input: String::new(),
+            }),
+            KeyCode::Char('b') => Box::new(BookmarkListState {
+                list_state: ListState::default(),
+            }),
+            KeyCode::Char('d') => Box::new(DeletePathState),
             _ => self,
         }
     }
@@ -64,10 +84,130 @@ impl State for MainState {
 impl State for DeletePathState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
-            KeyCode::Esc | KeyCode::Char('q') => Box::new(MainState),
-            KeyCode::Enter => {
+            KeyCode::Esc | KeyCode::Char('n') => Box::new(MainState),
+            KeyCode::Enter | KeyCode::Char('y') => {
                 app.delete_current_selection();
                 Box::new(MainState)
+            }
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        todo!()
+    }
+}
+
+impl State for NewPathState {
+    fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc => Box::new(MainState),
+            KeyCode::Enter => {
+                app.new_path(&*self.input);
+                Box::new(MainState)
+            }
+            KeyCode::Char(c) => {
+                self.input.push(c);
+                self
+            }
+            KeyCode::Backspace => {
+                self.input.pop();
+                self
+            }
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        todo!()
+    }
+}
+
+impl State for RenamePathState {
+    fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc => Box::new(MainState),
+            KeyCode::Enter => {
+                app.rename_current_selected_path(&*self.input);
+                Box::new(MainState)
+            }
+            KeyCode::Char(c) => {
+                self.input.push(c);
+                self
+            }
+            KeyCode::Backspace => {
+                self.input.pop();
+                self
+            }
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        todo!()
+    }
+}
+
+impl State for NewBookmarkState {
+    fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc => Box::new(MainState),
+            KeyCode::Enter => {
+                app.create_bookmark(self.input);
+                Box::new(MainState)
+            }
+            KeyCode::Char(c) => {
+                self.input.push(c);
+                self
+            }
+            KeyCode::Backspace => {
+                self.input.pop();
+                self
+            }
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        todo!()
+    }
+}
+
+impl State for BookmarkListState {
+    fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc => Box::new(MainState),
+            KeyCode::Enter => {
+                app.jump_to_bookmark(self.list_state.selected().unwrap_or_default());
+                Box::new(MainState)}
+            ,
+            KeyCode::Char('k') => {
+                let i = match self.list_state.selected() {
+                    Some(i) => {
+                        if i == 0 {
+                            app.bookmarks.list().len() - 1
+                        } else {
+                            i - 1
+                        }
+                    }
+                    None => 0,
+                };
+                self.list_state.select(Some(i));
+                self
+            }
+            KeyCode::Char('j') => {
+                let i = match self.list_state.selected() {
+                    Some(i) => {
+                        if i >= app.bookmarks.list().len() - 1 {
+                            0
+                        } else {
+                            i + 1
+                        }
+                    }
+                    None => 0,
+                };
+                self.list_state.select(Some(i));
+                self
             }
             _ => self,
         }
