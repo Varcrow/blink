@@ -1,6 +1,6 @@
 use crate::stfm::{
     app::{App, Preview},
-    entries::FileEntry,
+    file_style::{get_file_color, get_file_color_enhanced, get_file_icon, get_file_icon_enhanced},
 };
 use ratatui::{
     Frame,
@@ -43,12 +43,8 @@ fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
         .parent_dir_entries
         .iter()
         .map(|entry| {
-            let icon = if entry.is_dir { "📁" } else { "📄" };
-            let style = if entry.is_dir {
-                Style::default().fg(Color::Cyan)
-            } else {
-                Style::default()
-            };
+            let icon = get_file_icon_enhanced(entry);
+            let style = Style::default().fg(get_file_color_enhanced(entry));
 
             let line = Line::from(vec![
                 Span::raw(format!("{} ", icon)),
@@ -69,12 +65,8 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
         .cwd_entries
         .iter()
         .map(|entry| {
-            let icon = get_file_icon(entry);
-            let style = if entry.is_dir {
-                Style::default().fg(Color::Cyan)
-            } else {
-                Style::default()
-            };
+            let icon = get_file_icon_enhanced(entry);
+            let style = Style::default().fg(get_file_color_enhanced(entry));
 
             let line = Line::from(vec![
                 Span::raw(format!("{} ", icon)),
@@ -107,12 +99,8 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
             let preview_contents: Vec<ListItem> = entries
                 .iter()
                 .map(|entry| {
-                    let icon = get_file_icon(entry);
-                    let style = if entry.is_dir {
-                        Style::default().fg(Color::Cyan)
-                    } else {
-                        Style::default()
-                    };
+                    let icon = get_file_icon_enhanced(entry);
+                    let style = Style::default().fg(get_file_color_enhanced(entry));
 
                     let line = Line::from(vec![
                         Span::raw(format!("{} ", icon)),
@@ -133,15 +121,16 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
 fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     let dir_count = app.cwd_entries.iter().filter(|e| e.is_dir).count();
     let file_count = app.cwd_entries.len() - dir_count;
-
-    let yank_status = if app.yanked_entry_path.is_some() {
+    let yank_status = if app.yanked_entry_path.is_some() && app.is_cut == true {
+        "[Cut]"
+    } else if app.yanked_entry_path.is_some() {
         "[Yanked]"
     } else {
         "[Clear]"
     };
 
     let status = format!(
-        " 📁 {} dirs | 📄 {} files | {}",
+        " 📁 {} dirs | 📄 {} files | {} ",
         dir_count, file_count, yank_status
     );
 
@@ -217,40 +206,6 @@ pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListS
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(bookmark_list, area, list_state);
-}
-
-// Requires nerd font in terminal
-// Considering using something that doesnt require NF
-fn get_file_icon(entry: &FileEntry) -> &'static str {
-    if entry.is_dir {
-        return "";
-    }
-
-    let extension = entry
-        .path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("");
-
-    match extension {
-        "rs" => "",
-        "py" => "",
-        "js" | "jsx" => "",
-        "ts" | "tsx" => "",
-        "go" => "󰟓",
-        "c" | "cpp" | "h" | "hpp" => "",
-        "java" => "",
-        "html" => "",
-        "css" | "scss" => "",
-        "json" => "",
-        "md" => "",
-        "txt" => "󰦨",
-        "pdf" => "",
-        "png" | "jpg" | "jpeg" | "gif" => "",
-        "zip" | "tar" | "gz" => "",
-        "git" | "gitignore" => "",
-        _ => "",
-    }
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
