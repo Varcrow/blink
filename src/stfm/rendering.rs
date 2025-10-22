@@ -1,4 +1,4 @@
-use crate::stfm::app::{App, InputMode, Preview};
+use crate::stfm::app::{App, Preview};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
 };
 
-pub fn render(app: &mut App, frame: &mut Frame) {
+pub fn render_main_state(app: &App, frame: &mut Frame) {
     let outer_layout = Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(0),
@@ -27,10 +27,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     render_current_dir(app, frame, columns[1]);
     render_preview_dir(app, frame, columns[2]);
     render_status_bar(app, frame, outer_layout[2]);
-
-    if app.input_mode != InputMode::None {
-        render_popup(app, frame);
-    }
 }
 
 fn render_current_dir_text(app: &App, frame: &mut Frame, area: Rect) {
@@ -65,7 +61,7 @@ fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
     frame.render_widget(parent_list, area);
 }
 
-fn render_current_dir(app: &mut App, frame: &mut Frame, area: Rect) {
+fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
     let items: Vec<ListItem> = app
         .cwd_entries
         .iter()
@@ -94,7 +90,7 @@ fn render_current_dir(app: &mut App, frame: &mut Frame, area: Rect) {
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol("> ");
-    frame.render_stateful_widget(cwd_list, area, &mut app.list_state);
+    frame.render_stateful_widget(cwd_list, area, &mut app.list_state.clone());
 }
 
 fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
@@ -151,40 +147,9 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     frame.render_widget(status_bar, area);
 }
 
-fn render_popup(app: &App, frame: &mut Frame) {
-    let (area, title, content) = match &app.input_mode {
-        InputMode::Rename { input } => {
-            let area = centered_rect(60, 15, frame.area());
-            let title = "Rename";
-            let content = format!("New name: {}", input);
-            (area, title, content)
-        }
-        InputMode::NewEntry { input } => {
-            let area = centered_rect(60, 15, frame.area());
-            let title = "Create entry";
-            let content = format!("Entry name: {}", input);
-            (area, title, content)
-        }
-        InputMode::ListBookmarks { input } => {
-            let area = centered_rect(60, 60, frame.area());
-            let title = "List bookmarks";
-            (area, title, content)
-        }
-        InputMode::NewBookmark { input } => {
-            let area = centered_rect(60, 15, frame.area());
-            let title = "Create bookmark";
-            let content = format!("Name: {}", input);
-            (area, title, content)
-        }
-        InputMode::Delete => {
-            let area = centered_rect(60, 15, frame.area());
-            let title = "Delete";
-            let content = format!("Delete entry?: y/n");
-            (area, title, content)
-        }
-        InputMode::None => return,
-    };
-
+// Universal function for states that need to render input
+fn render_input_popup(frame: &mut Frame, title: String, content: String) {
+    let area = centered_rect(60, 15, frame.area());
     let popup = Paragraph::new(content)
         .block(
             Block::default()
@@ -196,10 +161,6 @@ fn render_popup(app: &App, frame: &mut Frame) {
 
     frame.render_widget(Clear, area);
     frame.render_widget(popup, area);
-}
-
-fn rename_popup(app: &App, frame: &mut Frame) {
-    let area = centered_rect(60, 20, frame.area());
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

@@ -2,7 +2,6 @@ use crate::stfm::{
     bookmarks::Bookmarks,
     config::Config,
     entries::{FileEntry, get_entries},
-    rendering::render,
     states::{MainState, State},
 };
 use ratatui::{
@@ -75,7 +74,7 @@ impl App {
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
         while self.running_state != RunningState::Done {
-            terminal.draw(|frame| render(self, frame))?;
+            terminal.draw(|frame| self.state.render(self, frame))?;
             if event::poll(Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {

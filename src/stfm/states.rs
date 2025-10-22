@@ -1,6 +1,5 @@
-use crate::stfm::app::{App, RunningState};
-use color_eyre::config::Frame;
-use ratatui::{crossterm::event::KeyCode, widgets::ListState};
+use crate::stfm::{app::{App, RunningState}, rendering::render_main_state};
+use ratatui::{crossterm::event::KeyCode, widgets::ListState, Frame};
 
 // State trait
 pub trait State {
@@ -77,7 +76,7 @@ impl State for MainState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        todo!()
+        render_main_state(app, frame);
     }
 }
 
