@@ -1,4 +1,4 @@
-use crate::stfm::{
+use crate::blink::{
     app::{App, Preview},
     file_style::{get_file_color, get_file_color_enhanced, get_file_icon, get_file_icon_enhanced},
 };

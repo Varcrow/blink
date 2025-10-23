@@ -1,4 +1,4 @@
-use crate::stfm::{
+use crate::blink::{
     app::{App, RunningState},
     rendering::{render_bookmark_list, render_confirm_delete_popup, render_input_popup, render_main_state},
 };
@@ -59,6 +59,10 @@ impl State for MainState {
             }
             KeyCode::Char('p') => {
                 app.paste_yanked_path();
+                self
+            }
+            KeyCode::Char('o') => {
+                app.open_current_selection();
                 self
             }
             KeyCode::Char('r') => Box::new(RenamePathState {

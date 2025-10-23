@@ -1,4 +1,4 @@
-use crate::stfm::entries::FileEntry;
+use crate::blink::entries::FileEntry;
 use ratatui::style::Color;
 use std::path::Path;
 

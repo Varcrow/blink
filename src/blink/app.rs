@@ -1,14 +1,15 @@
-use crate::stfm::{
+use crate::blink::{
     bookmarks::Bookmarks,
     config::Config,
     entries::{FileEntry, get_entries},
     states::{MainState, State},
 };
+use crossterm::terminal;
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
-    widgets::ListState,
+    widgets::{Clear, ListState},
 };
-use std::{fs, path::PathBuf, time::Duration};
+use std::{fs, path::PathBuf, process::Command, time::Duration};
 use std::{io, path::Path};
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -47,7 +48,6 @@ pub struct App {
     pub config: Config,
 }
 
-// pub functions
 impl App {
     pub fn new(path: PathBuf) -> color_eyre::Result<App> {
         let config = Config::load()?;
@@ -74,7 +74,10 @@ impl App {
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
         while self.running_state != RunningState::Done {
-            terminal.draw(|frame| self.state.render(self, frame))?;
+            terminal.draw(|frame| {
+                frame.render_widget(Clear, frame.area());
+                self.state.render(self, frame)
+            })?;
             if event::poll(Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {
@@ -87,9 +90,7 @@ impl App {
         ratatui::restore();
         Ok(())
     }
-}
 
-impl App {
     fn update_cwd(&mut self, path: PathBuf) {
         self.cwd = path;
         self.list_state.select(Some(0));
@@ -279,7 +280,7 @@ impl App {
 
     pub fn jump_to_bookmark(&mut self, index: usize) {
         let bookmarks: Vec<_> = self.bookmarks.list();
-        if let Some((tag, bookmark)) = bookmarks.get(index) {
+        if let Some((_, bookmark)) = bookmarks.get(index) {
             if bookmark.path.exists() {
                 self.update_cwd(bookmark.path.clone());
             }
@@ -302,5 +303,46 @@ impl App {
         }
 
         Ok(())
+    }
+
+    pub fn open_current_selection(&mut self) {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                if !entry.is_dir {
+                    self.open_file(&entry.path);
+                }
+            }
+        }
+    }
+
+    fn open_file(&self, path: &std::path::Path) {
+        ratatui::restore();
+
+        // open the file based on OS
+        #[cfg(target_os = "macos")]
+        let status = Command::new("open").arg(path).status();
+
+        #[cfg(target_os = "linux")]
+        let status = Command::new("xdg-open").arg(path).status();
+
+        #[cfg(target_os = "windows")]
+        let status = Command::new("cmd")
+            .args(["/C", "start", "", &path.to_string_lossy()])
+            .status();
+
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        let status = Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "Unsupported OS",
+        ));
+
+        // clear the terminal
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let mut terminal = ratatui::init();
+        terminal.clear();
+        terminal.draw(|frame| {
+            frame.render_widget(Clear, frame.area());
+            self.state.render(self, frame);
+        });
     }
 }
