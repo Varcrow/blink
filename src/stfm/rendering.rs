@@ -181,8 +181,8 @@ pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListS
         .iter()
         .map(|(name, entry)| {
             let line = Line::from(vec![Span::raw(format!(
-                "{}{}: {}",
-                "🔖".to_string(),
+                "{} {}: {}",
+                "\u{eaa5}".to_string(),
                 name,
                 entry.path.to_string_lossy()
             ))]);
