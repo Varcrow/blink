@@ -1,13 +1,13 @@
 use crate::blink::{
     app::{App, Preview},
-    file_style::{get_file_color, get_file_color_enhanced, get_file_icon, get_file_icon_enhanced},
+    file_style::{get_file_color_enhanced, get_file_icon_enhanced},
 };
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph},
 };
 
 pub fn render_main_state(app: &App, frame: &mut Frame) {
@@ -35,6 +35,7 @@ pub fn render_main_state(app: &App, frame: &mut Frame) {
 fn render_current_dir_text(app: &App, frame: &mut Frame, area: Rect) {
     let dir_text =
         Paragraph::new(format!(" {}", app.cwd.display())).style(Style::default().fg(Color::White));
+    frame.render_widget(Clear, area);
     frame.render_widget(dir_text, area);
 }
 
@@ -55,8 +56,9 @@ fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
         })
         .collect();
 
-    let parent_list = List::new(items).block(Block::default().borders(Borders::ALL));
+    let parent_list = List::new(items).block(Block::bordered().border_type(BorderType::Rounded));
 
+    frame.render_widget(Clear, area);
     frame.render_widget(parent_list, area);
 }
 
@@ -78,21 +80,24 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
         .collect();
 
     let cwd_list = List::new(items)
-        .block(Block::default().borders(Borders::ALL))
+        .block(Block::bordered().border_type(BorderType::Rounded))
         .highlight_style(
             Style::default()
                 .bg(Color::DarkGray)
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol("> ");
+
+    frame.render_widget(Clear, area);
     frame.render_stateful_widget(cwd_list, area, &mut app.list_state.clone());
 }
 
 fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
     match &app.preview_contents {
         Preview::File { contents } => {
-            let file_contents =
-                Paragraph::new(contents.clone()).block(Block::default().borders(Borders::ALL));
+            let file_contents = Paragraph::new(contents.clone())
+                .block(Block::bordered().border_type(BorderType::Rounded));
+            frame.render_widget(Clear, area);
             frame.render_widget(file_contents, area);
         }
         Preview::Directory { entries } => {
@@ -111,8 +116,10 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
                 })
                 .collect();
 
-            let preview_list =
-                List::new(preview_contents).block(Block::default().borders(Borders::ALL));
+            let preview_list = List::new(preview_contents)
+                .block(Block::bordered().border_type(BorderType::Rounded));
+
+            frame.render_widget(Clear, area);
             frame.render_widget(preview_list, area);
         }
     }
@@ -136,6 +143,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
 
     let status_bar = Paragraph::new(status).style(Style::default().fg(Color::White));
 
+    frame.render_widget(Clear, area);
     frame.render_widget(status_bar, area);
 }
 
@@ -156,13 +164,13 @@ pub fn render_input_popup(frame: &mut Frame, title: String, content: String) {
     frame.render_widget(popup, area);
 }
 
-pub fn render_confirm_delete_popup(frame: &mut Frame) {
+pub fn render_input_prompt_popup(frame: &mut Frame, title: String, content: String) {
     let area = centered_rect(30, 15, frame.area());
-    let popup = Paragraph::new("y / n")
+    let popup = Paragraph::new(content)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Delete")
+                .title(title)
                 .title_alignment(Alignment::Center)
                 .style(Style::default()),
         )
@@ -173,7 +181,7 @@ pub fn render_confirm_delete_popup(frame: &mut Frame) {
 }
 
 pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListState) {
-    let area = centered_rect(30, 30, frame.area());
+    let area = centered_rect(60, 60, frame.area());
 
     let items: Vec<ListItem> = app
         .bookmarks

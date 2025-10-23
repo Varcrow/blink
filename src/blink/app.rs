@@ -305,44 +305,122 @@ impl App {
         Ok(())
     }
 
-    pub fn open_current_selection(&mut self) {
+    pub fn open_in_editor_selection(&mut self) -> color_eyre::Result<()> {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
-                if !entry.is_dir {
-                    self.open_file(&entry.path);
+                let path = entry.path.clone();
+                let editor = std::env::var("EDITOR")
+                    .or_else(|_| std::env::var("VISUAL"))
+                    .unwrap_or_else(|_| self.get_default_editor());
+
+                if is_terminal_editor(&editor) {
+                    self.open_with_terminal(&editor, &path)?;
+                } else {
+                    self.open_with_app(&editor, &path)?;
                 }
             }
         }
+        Ok(())
     }
 
-    fn open_file(&self, path: &std::path::Path) {
-        ratatui::restore();
+    fn open_with_app(&self, app: &str, path: &std::path::Path) -> color_eyre::Result<()> {
+        #[cfg(unix)]
+        {
+            Command::new(app).arg(path).spawn()?;
+        }
 
-        // open the file based on OS
-        #[cfg(target_os = "macos")]
-        let status = Command::new("open").arg(path).status();
+        #[cfg(windows)]
+        {
+            Command::new(app).arg(path).spawn()?;
+        }
 
-        #[cfg(target_os = "linux")]
-        let status = Command::new("xdg-open").arg(path).status();
+        Ok(())
+    }
 
+    pub fn open_with_system_default_selection(&self) -> color_eyre::Result<()> {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                if !entry.is_dir {
+                    self.open_with_system_default(&entry.path)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn get_default_editor(&self) -> String {
         #[cfg(target_os = "windows")]
-        let status = Command::new("cmd")
-            .args(["/C", "start", "", &path.to_string_lossy()])
-            .status();
+        {
+            "notepad".to_string()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            "nano".to_string()
+        }
+        #[cfg(target_os = "macos")]
+        {
+            "TextEdit".to_string()
+        }
+    }
 
-        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-        let status = Err(std::io::Error::new(
-            std::io::ErrorKind::Unsupported,
-            "Unsupported OS",
-        ));
+    // this really makes blink bussin with terminal editors
+    // it drops into the editor and comes back to blink once exited
+    fn open_with_terminal(
+        &mut self,
+        editor: &str,
+        path: &std::path::Path,
+    ) -> color_eyre::Result<()> {
+        ratatui::restore();
+        let status = Command::new(editor).arg(path).status();
 
-        // clear the terminal
         std::thread::sleep(std::time::Duration::from_millis(50));
         let mut terminal = ratatui::init();
-        terminal.clear();
+
+        terminal.clear()?;
+        self.update_all_entries();
         terminal.draw(|frame| {
             frame.render_widget(Clear, frame.area());
             self.state.render(self, frame);
-        });
+        })?;
+
+        if let Err(e) = status {
+            eprintln!("Failed to open editor '{}': {}", editor, e);
+        }
+
+        Ok(())
     }
+
+    pub fn open_with_system_default(&self, path: &std::path::Path) -> color_eyre::Result<()> {
+        #[cfg(target_os = "macos")]
+        {
+            Command::new("open").arg(path).spawn()?;
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            Command::new("xdg-open").arg(path).spawn()?;
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            Command::new("cmd")
+                .args(["/C", "start", "", &path.to_string_lossy()])
+                .spawn()?;
+        }
+
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            Command::new("xdg-open").arg(path).spawn()?;
+        }
+
+        Ok(())
+    }
+}
+
+fn is_terminal_editor(editor: &str) -> bool {
+    let editor_lower = editor.to_lowercase();
+    let terminal_editors = ["vim", "nvim", "nano", "emacs -nw", "micro", "helix"];
+    terminal_editors
+        .iter()
+        .any(|&editor| editor_lower.contains(editor))
 }
