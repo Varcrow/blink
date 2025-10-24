@@ -376,14 +376,19 @@ impl App {
     }
 
     // this really makes blink bussin with terminal editors
-    // it drops into the editor and comes back to blink once exited
+    // checks if given path is a directory which would be list_state.selected()
+    // if its a directory, set the terminal app current dir to it otherwise use cwd
     fn open_with_terminal(
         &mut self,
         editor: &str,
         path: &std::path::Path,
     ) -> color_eyre::Result<()> {
         ratatui::restore();
-        let status = Command::new(editor).arg(path).status();
+
+        let status = Command::new(editor)
+            .arg(path)
+            .current_dir(if path.is_dir() { path } else { &self.cwd })
+            .status();
 
         std::thread::sleep(std::time::Duration::from_millis(50));
         let mut terminal = ratatui::init();
