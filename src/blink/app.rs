@@ -4,11 +4,11 @@ use crate::blink::{
     entries::{FileEntry, get_entries},
     states::{MainState, State},
 };
-use crossterm::terminal;
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
     widgets::{Clear, ListState},
 };
+use std::time::Instant;
 use std::{fs, path::PathBuf, process::Command, time::Duration};
 use std::{io, path::Path};
 
@@ -44,6 +44,8 @@ pub struct App {
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
     pub preview_contents: Preview,
+    last_preview_update: Instant,
+    debounce_time_ms: u128,
     pub bookmarks: Bookmarks,
     pub config: Config,
 }
@@ -55,7 +57,7 @@ impl App {
         let mut app = App {
             running_state: RunningState::Running,
             state: Box::new(MainState),
-            list_state: ListState::default(),
+            list_state: ListState::default().with_selected(Some(0)),
             cwd: path.clone(),
             yanked_entry_path: None,
             is_cut: false,
@@ -64,6 +66,8 @@ impl App {
             preview_contents: Preview::File {
                 contents: String::new(),
             },
+            last_preview_update: Instant::now(),
+            debounce_time_ms: 100,
             bookmarks,
             config,
         };
@@ -78,7 +82,7 @@ impl App {
                 frame.render_widget(Clear, frame.area());
                 self.state.render(self, frame)
             })?;
-            if event::poll(Duration::from_millis(100))? {
+            if event::poll(Duration::from_millis(16))? {
                 if let Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {
                         let old_state = std::mem::replace(&mut self.state, Box::new(MainState));
@@ -120,7 +124,7 @@ impl App {
                     self.preview_contents = Preview::Directory { entries }
                 } else {
                     let contents = fs::read_to_string(&entry.path)
-                        .unwrap_or_else(|_| "[Binary file or non-UTF-8 content]".to_string());
+                        .unwrap_or_else(|_| "[Binary file]".to_string());
                     self.preview_contents = Preview::File { contents }
                 }
             }
@@ -238,7 +242,11 @@ impl App {
             None => 0,
         };
         self.list_state.select(Some(i));
-        self.update_preview_contents();
+
+        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
+            self.update_preview_contents();
+            self.last_preview_update = Instant::now();
+        }
     }
 
     pub fn move_back_in_cwd_list(&mut self) {
@@ -253,7 +261,11 @@ impl App {
             None => 0,
         };
         self.list_state.select(Some(i));
-        self.update_preview_contents();
+
+        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
+            self.update_preview_contents();
+            self.last_preview_update = Instant::now();
+        }
     }
 
     pub fn enter_current_path_selection(&mut self) {
