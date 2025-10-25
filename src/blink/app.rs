@@ -317,74 +317,49 @@ impl App {
         Ok(())
     }
 
-    pub fn open_in_editor_selection(&mut self) -> color_eyre::Result<()> {
+    // checks if given path is a directory which would be list_state.selected()
+    // if its a directory, set the terminal app current dir to it otherwise use cwd
+    // Requires EDITOR or VISUAL variable to exist to open with editor
+    pub fn open_in_editor(&mut self) -> color_eyre::Result<()> {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
-                let path = entry.path.clone();
-                let editor = std::env::var("EDITOR")
-                    .or_else(|_| std::env::var("VISUAL"))
-                    .unwrap_or_else(|_| self.get_default_editor());
-
-                if is_terminal_editor(&editor) {
-                    self.open_with_terminal(&editor, &path)?;
-                } else {
-                    self.open_with_app(&editor, &path)?;
+                if let Ok(editor) = std::env::var("EDITOR").or_else(|_| std::env::var("VISUAL")) {
+                    // check if editor is a terminal editor
+                    let editor_lower = editor.to_lowercase();
+                    let terminal_editors = ["vi", "vim", "nvim", "nano", "emacs", "micro", "helix"];
+                    if terminal_editors.iter().any(|&e| editor_lower.contains(e)) {
+                        self.open_with_terminal(&editor, &entry.path.clone());
+                    } else {
+                        open::with(&entry.path.clone(), editor);
+                    }
                 }
             }
         }
-        Ok(())
-    }
-
-    fn open_with_app(&self, app: &str, path: &std::path::Path) -> color_eyre::Result<()> {
-        #[cfg(unix)]
-        {
-            Command::new(app).arg(path).spawn()?;
-        }
-
-        #[cfg(windows)]
-        {
-            Command::new(app).arg(path).spawn()?;
-        }
 
         Ok(())
     }
 
-    pub fn open_with_system_default_selection(&self) -> color_eyre::Result<()> {
+    pub fn open_in_default_app(&mut self) -> color_eyre::Result<()> {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 if !entry.is_dir {
-                    self.open_with_system_default(&entry.path)?;
+                    open::that_in_background(&entry.path);
                 }
             }
         }
+
         Ok(())
     }
 
-    fn get_default_editor(&self) -> String {
-        #[cfg(target_os = "windows")]
-        {
-            "notepad".to_string()
-        }
-        #[cfg(target_os = "linux")]
-        {
-            "nano".to_string()
-        }
-        #[cfg(target_os = "macos")]
-        {
-            "TextEdit".to_string()
-        }
-    }
-
-    // this really makes blink bussin with terminal editors
+    // Drops into the terminal editor from blink and returns to blink once the editor closes
     // checks if given path is a directory which would be list_state.selected()
-    // if its a directory, set the terminal app current dir to it otherwise use cwd
+    // if its a directory, set the terminal app current dir to it, otherwise use cwd
     fn open_with_terminal(
         &mut self,
         editor: &str,
         path: &std::path::Path,
     ) -> color_eyre::Result<()> {
         ratatui::restore();
-
         let status = Command::new(editor)
             .arg(path)
             .current_dir(if path.is_dir() { path } else { &self.cwd })
@@ -392,7 +367,6 @@ impl App {
 
         std::thread::sleep(std::time::Duration::from_millis(50));
         let mut terminal = ratatui::init();
-
         terminal.clear()?;
         self.update_all_entries();
         terminal.draw(|frame| {
@@ -402,32 +376,6 @@ impl App {
 
         if let Err(e) = status {
             eprintln!("Failed to open editor '{}': {}", editor, e);
-        }
-
-        Ok(())
-    }
-
-    pub fn open_with_system_default(&self, path: &std::path::Path) -> color_eyre::Result<()> {
-        #[cfg(target_os = "macos")]
-        {
-            Command::new("open").arg(path).spawn()?;
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            Command::new("xdg-open").arg(path).spawn()?;
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            Command::new("cmd")
-                .args(["/C", "start", "", &path.to_string_lossy()])
-                .spawn()?;
-        }
-
-        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-        {
-            Command::new("xdg-open").arg(path).spawn()?;
         }
 
         Ok(())

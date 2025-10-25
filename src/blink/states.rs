@@ -15,7 +15,6 @@ pub trait State {
 // App states
 pub struct MainState;
 pub struct DeletePathState;
-pub struct OpenFileState;
 pub struct NewPathState {
     input: String,
 }
@@ -64,7 +63,14 @@ impl State for MainState {
                 app.paste_yanked_path();
                 self
             }
-            KeyCode::Char('o') => Box::new(OpenFileState),
+            KeyCode::Char('o') => {
+                app.open_in_default_app();
+                self
+            },
+            KeyCode::Char('e') => {
+                app.open_in_editor();
+                self
+            },
             KeyCode::Char('r') => Box::new(RenamePathState {
                 input: String::new(),
             }),
@@ -102,32 +108,6 @@ impl State for DeletePathState {
     fn render(&self, app: &App, frame: &mut Frame) {
         render_main_state(app, frame);
         render_input_prompt_popup(frame, "Delete".to_string(), "y / n".to_string());
-    }
-}
-
-impl State for OpenFileState {
-    fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc => Box::new(MainState),
-            KeyCode::Char('o') => {
-                app.open_with_system_default_selection();
-                Box::new(MainState)
-            }
-            KeyCode::Char('e') => {
-                app.open_in_editor_selection();
-                Box::new(MainState)
-            }
-            _ => self,
-        }
-    }
-
-    fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
-        render_input_prompt_popup(
-            frame,
-            "Open with".to_string(),
-            "e: Editor / o: Default app".to_string(),
-        );
     }
 }
 
