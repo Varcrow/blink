@@ -1,0 +1,4 @@
+- [] Tabs
+- [] Multi line select('V' key)
+- [] Fix all artifacting
+- [] Compression and decompression
