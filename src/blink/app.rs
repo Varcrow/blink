@@ -46,6 +46,9 @@ pub struct App {
     pub preview_contents: Preview,
     last_preview_update: Instant,
     debounce_time_ms: u128,
+    pub visual_mode: bool,
+    pub visual_anchor: Option<usize>,
+    pub visual_selection: Vec<usize>,
     pub bookmarks: Bookmarks,
     pub config: Config,
 }
@@ -68,6 +71,9 @@ impl App {
             },
             last_preview_update: Instant::now(),
             debounce_time_ms: 100,
+            visual_mode: false,
+            visual_anchor: None,
+            visual_selection: Vec::new(),
             bookmarks,
             config,
         };
@@ -135,6 +141,28 @@ impl App {
         self.update_cwd_entries();
         self.update_parent_dir_entries();
         self.update_preview_contents();
+    }
+
+    pub fn toggle_visual_mode(&mut self) {
+        if self.visual_mode {
+            self.visual_mode = false;
+            self.visual_anchor = None;
+            self.visual_selection.clear();
+        } else {
+            self.visual_mode = true;
+            self.visual_anchor = self.list_state.selected();
+            if let Some(anchor) = self.visual_anchor {
+                self.visual_selection = vec![anchor];
+            }
+        }
+    }
+
+    pub fn update_visual_selection(&mut self) {
+        if let (Some(anchor), Some(current)) = (self.visual_anchor, self.list_state.selected()) {
+            let start = anchor.min(current);
+            let end = anchor.max(current);
+            self.visual_selection = (start..=end).collect();
+        }
     }
 
     pub fn new_path(&mut self, name: &str) {
@@ -243,6 +271,10 @@ impl App {
         };
         self.list_state.select(Some(i));
 
+        if self.visual_mode {
+            self.update_visual_selection();
+        }
+
         if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
             self.update_preview_contents();
             self.last_preview_update = Instant::now();
@@ -261,6 +293,10 @@ impl App {
             None => 0,
         };
         self.list_state.select(Some(i));
+
+        if self.visual_mode {
+            self.update_visual_selection();
+        }
 
         if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
             self.update_preview_contents();
@@ -380,12 +416,4 @@ impl App {
 
         Ok(())
     }
-}
-
-fn is_terminal_editor(editor: &str) -> bool {
-    let editor_lower = editor.to_lowercase();
-    let terminal_editors = ["vim", "nvim", "nano", "emacs -nw", "micro", "helix"];
-    terminal_editors
-        .iter()
-        .any(|&editor| editor_lower.contains(editor))
 }

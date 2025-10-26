@@ -1,8 +1,6 @@
 use crate::blink::{
     app::{App, RunningState},
-    rendering::{
-        render_bookmark_list, render_input_popup, render_input_prompt_popup, render_main_state,
-    },
+    rendering::{render_app, render_bookmark_list, render_input_popup, render_input_prompt_popup},
 };
 use ratatui::{Frame, crossterm::event::KeyCode, widgets::ListState};
 
@@ -15,6 +13,7 @@ pub trait State {
 // App states
 pub struct MainState;
 pub struct DeletePathState;
+pub struct VisualSelectionState;
 pub struct NewPathState {
     input: String,
 }
@@ -66,22 +65,34 @@ impl State for MainState {
             KeyCode::Char('o') => {
                 app.open_in_default_app();
                 self
-            },
+            }
             KeyCode::Char('e') => {
                 app.open_in_editor();
                 self
-            },
+            }
+            KeyCode::Char('t') => {
+                // TODO: Create new tab
+                self
+            }
+            KeyCode::Char('T') => {
+                // TODO: Close tab
+                self
+            }
+            KeyCode::Char('V') => {
+                app.toggle_visual_mode();
+                Box::new(VisualSelectionState)
+            }
             KeyCode::Char('r') => Box::new(RenamePathState {
                 input: String::new(),
             }),
             KeyCode::Char('m') => Box::new(NewPathState {
                 input: String::new(),
             }),
-            KeyCode::Char('B') => Box::new(NewBookmarkState {
-                input: String::new(),
-            }),
             KeyCode::Char('b') => Box::new(BookmarkListState {
                 list_state: ListState::default(),
+            }),
+            KeyCode::Char('B') => Box::new(NewBookmarkState {
+                input: String::new(),
             }),
             KeyCode::Char('d') => Box::new(DeletePathState),
             _ => self,
@@ -89,7 +100,7 @@ impl State for MainState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
+        render_app(app, frame);
     }
 }
 
@@ -106,8 +117,32 @@ impl State for DeletePathState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
+        render_app(app, frame);
         render_input_prompt_popup(frame, "Delete".to_string(), "y / n".to_string());
+    }
+}
+
+impl State for VisualSelectionState {
+    fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc => {
+                app.toggle_visual_mode();
+                Box::new(MainState)
+            }
+            KeyCode::Char('k') => {
+                app.move_back_in_cwd_list();
+                self
+            }
+            KeyCode::Char('j') => {
+                app.move_forward_in_cwd_list();
+                self
+            }
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        render_app(app, frame);
     }
 }
 
@@ -132,7 +167,7 @@ impl State for NewPathState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
+        render_app(app, frame);
         render_input_popup(
             frame,
             "New entry".to_string(),
@@ -162,7 +197,7 @@ impl State for RenamePathState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
+        render_app(app, frame);
         render_input_popup(frame, "Rename".to_string(), format!("Name: {}", self.input))
     }
 }
@@ -188,7 +223,7 @@ impl State for NewBookmarkState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
+        render_app(app, frame);
         render_input_popup(
             frame,
             "New bookmark".to_string(),
@@ -238,7 +273,7 @@ impl State for BookmarkListState {
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
-        render_main_state(app, frame);
+        render_app(app, frame);
         render_bookmark_list(app, frame, &mut self.list_state.clone());
     }
 }

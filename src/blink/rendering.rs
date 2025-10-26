@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph},
 };
 
-pub fn render_main_state(app: &App, frame: &mut Frame) {
+pub fn render_app(app: &App, frame: &mut Frame) {
     let outer_layout = Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(0),
@@ -56,7 +56,7 @@ fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
         })
         .collect();
 
-    let parent_list = List::new(items).block(Block::bordered().border_type(BorderType::Rounded));
+    let parent_list = List::new(items).block(Block::bordered().border_type(BorderType::Plain));
 
     frame.render_widget(Clear, area);
     frame.render_widget(parent_list, area);
@@ -66,9 +66,15 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
     let items: Vec<ListItem> = app
         .cwd_entries
         .iter()
-        .map(|entry| {
+        .enumerate()
+        .map(|(idx, entry)| {
             let icon = get_file_icon_enhanced(entry);
-            let style = Style::default().fg(get_file_color_enhanced(entry));
+            let mut style = Style::default().fg(get_file_color_enhanced(entry));
+
+            // Highlight selected items in visual mode
+            if app.visual_mode && app.visual_selection.contains(&idx) {
+                style = style.bg(Color::DarkGray).add_modifier(Modifier::BOLD);
+            }
 
             let line = Line::from(vec![
                 Span::raw(format!("{} ", icon)),
@@ -80,13 +86,12 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
         .collect();
 
     let cwd_list = List::new(items)
-        .block(Block::bordered().border_type(BorderType::Rounded))
+        .block(Block::bordered().border_type(BorderType::Plain))
         .highlight_style(
             Style::default()
                 .bg(Color::DarkGray)
                 .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("> ");
+        );
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(cwd_list, area, &mut app.list_state.clone());
@@ -96,7 +101,7 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
     match &app.preview_contents {
         Preview::File { contents } => {
             let file_contents = Paragraph::new(contents.clone())
-                .block(Block::bordered().border_type(BorderType::Rounded));
+                .block(Block::bordered().border_type(BorderType::Plain));
             frame.render_widget(Clear, area);
             frame.render_widget(file_contents, area);
         }
@@ -116,8 +121,8 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
                 })
                 .collect();
 
-            let preview_list = List::new(preview_contents)
-                .block(Block::bordered().border_type(BorderType::Rounded));
+            let preview_list =
+                List::new(preview_contents).block(Block::bordered().border_type(BorderType::Plain));
 
             frame.render_widget(Clear, area);
             frame.render_widget(preview_list, area);
@@ -209,8 +214,7 @@ pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListS
             Style::default()
                 .bg(Color::DarkGray)
                 .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("> ");
+        );
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(bookmark_list, area, list_state);
