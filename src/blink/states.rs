@@ -108,7 +108,7 @@ impl State for DeletePathState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
             KeyCode::Esc | KeyCode::Char('n') => Box::new(MainState),
-            KeyCode::Enter | KeyCode::Char('y') => {
+            KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('d') => {
                 app.delete_current_selection();
                 Box::new(MainState)
             }
@@ -125,7 +125,7 @@ impl State for DeletePathState {
 impl State for VisualSelectionState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Char('q') => {
                 app.toggle_visual_mode();
                 Box::new(MainState)
             }
@@ -136,6 +136,21 @@ impl State for VisualSelectionState {
             KeyCode::Char('j') => {
                 app.move_forward_in_cwd_list();
                 self
+            }
+            KeyCode::Char('y') => {
+                app.yank_current_selection(false);
+                app.toggle_visual_mode();
+                Box::new(MainState)
+            }
+            KeyCode::Char('x') => {
+                app.yank_current_selection(true);
+                app.toggle_visual_mode();
+                Box::new(MainState)
+            }
+            KeyCode::Char('d') => {
+                app.delete_current_selection();
+                app.toggle_visual_mode();
+                Box::new(MainState)
             }
             _ => self,
         }
@@ -235,7 +250,7 @@ impl State for NewBookmarkState {
 impl State for BookmarkListState {
     fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
-            KeyCode::Esc => Box::new(MainState),
+            KeyCode::Esc | KeyCode::Char('q') => Box::new(MainState),
             KeyCode::Enter => {
                 app.jump_to_bookmark(self.list_state.selected().unwrap_or_default());
                 Box::new(MainState)

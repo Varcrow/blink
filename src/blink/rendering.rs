@@ -133,9 +133,9 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
 fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     let dir_count = app.cwd_entries.iter().filter(|e| e.is_dir).count();
     let file_count = app.cwd_entries.len() - dir_count;
-    let yank_status = if app.yanked_entry_path.is_some() && app.is_cut == true {
+    let yank_status = if app.yanked_entry_paths.is_some() && app.is_cut == true {
         "[Cut]"
-    } else if app.yanked_entry_path.is_some() {
+    } else if app.yanked_entry_paths.is_some() {
         "[Yanked]"
     } else {
         "[Clear]"

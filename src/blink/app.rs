@@ -39,7 +39,7 @@ pub struct App {
     pub state: Box<dyn State>,
     pub list_state: ListState,
     pub cwd: PathBuf,
-    pub yanked_entry_path: Option<PathBuf>,
+    pub yanked_entry_paths: Option<Vec<PathBuf>>,
     pub is_cut: bool,
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
@@ -62,7 +62,7 @@ impl App {
             state: Box::new(MainState),
             list_state: ListState::default().with_selected(Some(0)),
             cwd: path.clone(),
-            yanked_entry_path: None,
+            yanked_entry_paths: None,
             is_cut: false,
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
@@ -186,75 +186,97 @@ impl App {
     }
 
     pub fn delete_current_selection(&mut self) {
-        if let Some(i) = self.list_state.selected() {
-            if let Some(entry) = self.cwd_entries.get(i) {
-                if entry.is_dir {
-                    fs::remove_dir_all(&entry.path);
-                } else {
-                    fs::remove_file(&entry.path);
+        if self.visual_mode && !self.visual_selection.is_empty() {
+            for &idx in &self.visual_selection {
+                if let Some(entry) = self.cwd_entries.get(idx) {
+                    if entry.is_dir {
+                        let _ = fs::remove_dir_all(&entry.path);
+                    } else {
+                        let _ = fs::remove_file(&entry.path);
+                    }
                 }
-                self.update_all_entries();
+            }
+            self.update_all_entries();
+        } else {
+            if let Some(i) = self.list_state.selected() {
+                if let Some(entry) = self.cwd_entries.get(i) {
+                    if entry.is_dir {
+                        fs::remove_dir_all(&entry.path);
+                    } else {
+                        fs::remove_file(&entry.path);
+                    }
+                    self.update_all_entries();
+                }
             }
         }
     }
 
     pub fn yank_current_selection(&mut self, cut: bool) {
-        if let Some(i) = self.list_state.selected() {
-            if let Some(entry) = self.cwd_entries.get(i) {
-                self.yanked_entry_path = Some(entry.path.clone());
-                self.is_cut = cut;
+        if self.visual_mode {
+            let paths: Vec<PathBuf> = self
+                .visual_selection
+                .iter()
+                .filter_map(|&idx| self.cwd_entries.get(idx))
+                .map(|entry| entry.path.clone())
+                .collect();
+            self.yanked_entry_paths = Some(paths);
+            self.is_cut = cut;
+        } else {
+            if let Some(i) = self.list_state.selected() {
+                if let Some(entry) = self.cwd_entries.get(i) {
+                    self.yanked_entry_paths = Some(vec![entry.path.clone()]);
+                    self.is_cut = cut;
+                }
             }
         }
     }
 
     pub fn paste_yanked_path(&mut self) {
-        if let Some(source) = &self.yanked_entry_path {
-            if let Some(filename) = source.file_name() {
-                let mut destination = self.cwd.join(filename);
-
-                if destination.exists() {
-                    let stem = destination
-                        .file_stem()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned();
-                    let ext = destination
-                        .extension()
-                        .map(|e| format!(".{}", e.to_string_lossy()))
-                        .unwrap_or_default();
-
-                    let mut counter = 1;
-                    loop {
-                        destination = self.cwd.join(format!("{}_copy{}{}", stem, counter, ext));
-                        if !destination.exists() {
-                            break;
-                        }
-                        counter += 1;
-                    }
-                }
-
-                let result = if source.is_file() {
-                    fs::copy(source, &destination).map(|_| ())
-                } else if source.is_dir() {
-                    self.copy_directory_recursively(source, &destination)
-                } else {
-                    return;
-                };
-
-                if result.is_ok() {
-                    if self.is_cut {
-                        if source.is_file() {
-                            let _ = fs::remove_file(source);
-                        } else if source.is_dir() {
-                            let _ = fs::remove_dir_all(source);
+        if let Some(sources) = &self.yanked_entry_paths.clone() {
+            for source in sources {
+                if let Some(filename) = source.file_name() {
+                    let mut destination = self.cwd.join(filename);
+                    if destination.exists() {
+                        let stem = destination
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .into_owned();
+                        let ext = destination
+                            .extension()
+                            .map(|e| format!(".{}", e.to_string_lossy()))
+                            .unwrap_or_default();
+                        let mut counter = 1;
+                        loop {
+                            destination = self.cwd.join(format!("{}_copy{}{}", stem, counter, ext));
+                            if !destination.exists() {
+                                break;
+                            }
+                            counter += 1;
                         }
                     }
 
-                    self.yanked_entry_path = None;
-                    self.is_cut = false;
-                    self.update_all_entries();
+                    let result = if source.is_file() {
+                        fs::copy(source, &destination).map(|_| ())
+                    } else if source.is_dir() {
+                        self.copy_directory_recursively(source, &destination)
+                    } else {
+                        return;
+                    };
+                    if result.is_ok() {
+                        if self.is_cut {
+                            if source.is_file() {
+                                let _ = fs::remove_file(source);
+                            } else if source.is_dir() {
+                                let _ = fs::remove_dir_all(source);
+                            }
+                        }
+                    }
                 }
             }
+            self.yanked_entry_paths = None;
+            self.is_cut = false;
+            self.update_all_entries();
         }
     }
 
