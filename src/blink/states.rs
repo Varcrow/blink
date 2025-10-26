@@ -14,6 +14,7 @@ pub trait State {
 pub struct MainState;
 pub struct DeletePathState;
 pub struct VisualSelectionState;
+pub struct VisualSelectionDeleteState;
 pub struct NewPathState {
     input: String,
 }
@@ -118,7 +119,7 @@ impl State for DeletePathState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
-        render_input_prompt_popup(frame, "Delete".to_string(), "y / n".to_string());
+        render_input_prompt_popup(frame, "Delete?".to_string(), "y / n".to_string());
     }
 }
 
@@ -147,7 +148,24 @@ impl State for VisualSelectionState {
                 app.toggle_visual_mode();
                 Box::new(MainState)
             }
-            KeyCode::Char('d') => {
+            KeyCode::Char('d') => Box::new(VisualSelectionDeleteState),
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        render_app(app, frame);
+    }
+}
+
+impl State for VisualSelectionDeleteState {
+    fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc | KeyCode::Char('n') => {
+                app.toggle_visual_mode();
+                Box::new(MainState)
+            }
+            KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('d') => {
                 app.delete_current_selection();
                 app.toggle_visual_mode();
                 Box::new(MainState)
@@ -158,6 +176,7 @@ impl State for VisualSelectionState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
+        render_input_prompt_popup(frame, "Delete?".to_string(), "y / n".to_string());
     }
 }
 
