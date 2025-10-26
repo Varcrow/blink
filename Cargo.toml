@@ -2,6 +2,18 @@
 name = "blink"
 version = "0.1.0"
 edition = "2024"
+authors = ["Varcrow <eminns28@gmail.com>"]
+description = "A fast, Vim-inspired terminal file manager"
+license = "MIT"
+repository = "https://github.com/Varcrow/blink"
+homepage = "https://github.com/Varcrow/blink"
+readme = "README.md"
+keywords = ["file-manager", "tui", "terminal", "vim"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "blink"
+path = "src/main.rs"
 
 [dependencies]
 color-eyre = "0.6.5"
@@ -11,3 +23,9 @@ serde = { version = "1.0", features = ["derive"] }
 directories = "5.0"
 toml = "0.8"
 open = "5.3.2"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+opt-level = "z"
