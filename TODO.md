@@ -1,4 +1,5 @@
 - [] Tabs
-- [] Multi line select('V' key)
 - [] Fix all artifacting
 - [] Compression and decompression
+- [] State enter and exit functions for cleaner functionality
+- [x] Multi line select('V' key)
