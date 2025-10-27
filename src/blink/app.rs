@@ -2,7 +2,9 @@ use crate::blink::{
     bookmarks::Bookmarks,
     config::config::Config,
     entries::{FileEntry, get_entries},
+    operations::Operation,
     states::{main_state::MainState, state_trait::State},
+    trash_manager::TrashManager,
 };
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
@@ -37,6 +39,8 @@ impl Default for Preview {
 pub struct App {
     pub running_state: RunningState,
     pub state: Box<dyn State>,
+    pub previous_operations: Vec<Box<dyn Operation>>,
+    pub trash_manager: TrashManager,
     pub list_state: ListState,
     pub cwd: PathBuf,
     pub yanked_entry_paths: Option<Vec<PathBuf>>,
@@ -60,6 +64,8 @@ impl App {
         let mut app = App {
             running_state: RunningState::Running,
             state: Box::new(MainState),
+            previous_operations: Vec::new(),
+            trash_manager: TrashManager::new()?,
             list_state: ListState::default().with_selected(Some(0)),
             cwd: path.clone(),
             yanked_entry_paths: None,

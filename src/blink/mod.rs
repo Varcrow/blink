@@ -5,3 +5,5 @@ pub mod rendering;
 pub mod file_style;
 pub mod config;
 pub mod bookmarks;
+pub mod operations;
+pub mod trash_manager;
