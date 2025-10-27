@@ -19,7 +19,6 @@ impl Default for UiConfig {
 }
 
 impl UiConfig {
-    // convert string to border type
     pub fn get_border_type(&self) -> BorderType {
         match self.border_type.to_lowercase().as_str() {
             "plain" => BorderType::Plain,
@@ -36,6 +35,7 @@ impl UiConfig {
 fn default_show_hidden() -> bool {
     true
 }
+
 fn default_border_type() -> String {
     "plain".to_string()
 }

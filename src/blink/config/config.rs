@@ -25,20 +25,20 @@ pub struct Config {
     #[serde(default)]
     pub ui: UiConfig,
     #[serde(default)]
-    pub colors: ColorScheme,
+    pub behavior: Behavior,
     #[serde(default)]
     pub keybindings: Keybindings,
     #[serde(default)]
-    pub behavior: Behavior,
+    pub colors: ColorScheme,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             ui: UiConfig::default(),
-            colors: ColorScheme::default(),
-            keybindings: Keybindings::default(),
             behavior: Behavior::default(),
+            keybindings: Keybindings::default(),
+            colors: ColorScheme::default(),
         }
     }
 }

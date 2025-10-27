@@ -6,10 +6,10 @@ use crate::blink::{
 use ratatui::{Frame, crossterm::event::KeyCode, widgets::ListState};
 
 pub struct NewBookmarkState {
-    pub(crate) input: String,
+    pub input: String,
 }
 pub struct BookmarkListState {
-    pub(crate) list_state: ListState,
+    pub list_state: ListState,
 }
 pub struct DeleteBookmarkState {
     index: usize,
@@ -17,22 +17,25 @@ pub struct DeleteBookmarkState {
 
 impl State for NewBookmarkState {
     fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc => Box::new(MainState),
-            KeyCode::Enter => {
-                let _ = app.create_bookmark(self.input);
-                Box::new(MainState)
-            }
-            KeyCode::Char(c) => {
-                self.input.push(c);
-                self
-            }
-            KeyCode::Backspace => {
-                self.input.pop();
-                self
-            }
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if let KeyCode::Char(c) = key {
+            self.input.push(c);
+            return self;
         }
+        if kb.matches(key, &vec!["backspace".to_string()]) {
+            self.input.pop();
+            return self;
+        }
+        if kb.matches(key, &vec!["enter".to_string()]) {
+            let _ = app.create_bookmark(self.input);
+            return Box::new(MainState);
+        }
+        if kb.matches(key, &vec!["esc".to_string()]) {
+            return Box::new(MainState);
+        }
+
+        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
@@ -48,45 +51,50 @@ impl State for NewBookmarkState {
 
 impl State for BookmarkListState {
     fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc | KeyCode::Char('q') => Box::new(MainState),
-            KeyCode::Enter => {
-                app.jump_to_bookmark(self.list_state.selected().unwrap_or_default());
-                Box::new(MainState)
-            }
-            KeyCode::Char('d') => Box::new(DeleteBookmarkState {
-                index: self.list_state.selected().unwrap_or_default(),
-            }),
-            KeyCode::Char('k') => {
-                let i = match self.list_state.selected() {
-                    Some(i) => {
-                        if i == 0 {
-                            app.bookmarks.list().len() - 1
-                        } else {
-                            i - 1
-                        }
-                    }
-                    _ => 0,
-                };
-                self.list_state.select(Some(i));
-                self
-            }
-            KeyCode::Char('j') => {
-                let i = match self.list_state.selected() {
-                    Some(i) => {
-                        if i >= app.bookmarks.list().len() - 1 {
-                            0
-                        } else {
-                            i + 1
-                        }
-                    }
-                    _ => 0,
-                };
-                self.list_state.select(Some(i));
-                self
-            }
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if kb.matches(key, &vec!["enter".to_string()]) {
+            app.jump_to_bookmark(self.list_state.selected().unwrap_or_default());
+            return Box::new(MainState);
         }
+        if kb.matches(key, &vec!["esc".to_string()]) {
+            return Box::new(MainState);
+        }
+        if kb.matches(key, &kb.delete) {
+            return Box::new(DeleteBookmarkState {
+                index: self.list_state.selected().unwrap_or_default(),
+            });
+        }
+        if kb.matches(key, &kb.move_up) {
+            let i = match self.list_state.selected() {
+                Some(i) => {
+                    if i == 0 {
+                        app.bookmarks.list().len() - 1
+                    } else {
+                        i - 1
+                    }
+                }
+                _ => 0,
+            };
+            self.list_state.select(Some(i));
+            return self;
+        }
+        if kb.matches(key, &kb.move_down) {
+            let i = match self.list_state.selected() {
+                Some(i) => {
+                    if i >= app.bookmarks.list().len() - 1 {
+                        0
+                    } else {
+                        i + 1
+                    }
+                }
+                _ => 0,
+            };
+            self.list_state.select(Some(i));
+            return self;
+        }
+
+        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
@@ -97,14 +105,17 @@ impl State for BookmarkListState {
 
 impl State for DeleteBookmarkState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc | KeyCode::Char('n') => Box::new(MainState),
-            KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('d') => {
-                let _ = app.delete_bookmark(self.index);
-                Box::new(MainState)
-            }
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if kb.matches(key, &vec!["esc".to_string(), "n".to_string()]) {
+            return Box::new(MainState);
         }
+        if kb.matches(key, &vec!["enter".to_string(), "y".to_string()]) {
+                let _ = app.delete_bookmark(self.index);
+            return Box::new(MainState);
+        }
+
+        return self;
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {

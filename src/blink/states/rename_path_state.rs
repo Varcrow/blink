@@ -6,27 +6,30 @@ use crate::blink::{
 use ratatui::{Frame, crossterm::event::KeyCode};
 
 pub struct RenamePathState {
-    pub(crate) input: String,
+    pub input: String,
 }
 
 impl State for RenamePathState {
     fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc => Box::new(MainState),
-            KeyCode::Enter => {
-                app.rename_current_selected_path(&*self.input);
-                Box::new(MainState)
-            }
-            KeyCode::Char(c) => {
-                self.input.push(c);
-                self
-            }
-            KeyCode::Backspace => {
-                self.input.pop();
-                self
-            }
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if let KeyCode::Char(c) = key {
+            self.input.push(c);
+            return self;
         }
+        if kb.matches(key, &vec!["backspace".to_string()]) {
+            self.input.pop();
+            return self;
+        }
+        if kb.matches(key, &vec!["enter".to_string()]) {
+            app.rename_current_selected_path(&*self.input);
+            return Box::new(MainState);
+        }
+        if kb.matches(key, &vec!["esc".to_string()]) {
+            return Box::new(MainState);
+        }
+
+        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {

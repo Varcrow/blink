@@ -11,22 +11,25 @@ pub struct NewPathState {
 
 impl State for NewPathState {
     fn handle_input(mut self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc => Box::new(MainState),
-            KeyCode::Enter => {
-                app.create_file(&*self.input);
-                Box::new(MainState)
-            }
-            KeyCode::Char(c) => {
-                self.input.push(c);
-                self
-            }
-            KeyCode::Backspace => {
-                self.input.pop();
-                self
-            }
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if let KeyCode::Char(c) = key {
+            self.input.push(c);
+            return self;
         }
+        if kb.matches(key, &vec!["backspace".to_string()]) {
+            self.input.pop();
+            return self;
+        }
+        if kb.matches(key, &vec!["enter".to_string()]) {
+            app.create_file(&*self.input);
+            return Box::new(MainState);
+        }
+        if kb.matches(key, &vec!["esc".to_string()]) {
+            return Box::new(MainState);
+        }
+
+        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {

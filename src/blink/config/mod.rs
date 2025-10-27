@@ -3,4 +3,3 @@ pub mod ui;
 pub mod keybindings;
 pub mod colorscheme;
 pub mod behaviour;
-

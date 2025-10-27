@@ -10,32 +10,35 @@ pub struct DeleteVisualSelectionState;
 
 impl State for VisualSelectionState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                app.toggle_visual_mode();
-                Box::new(MainState)
-            }
-            KeyCode::Char('k') => {
-                app.move_back_in_cwd_list();
-                self
-            }
-            KeyCode::Char('j') => {
-                app.move_forward_in_cwd_list();
-                self
-            }
-            KeyCode::Char('y') => {
-                app.yank_current_selection(false);
-                app.toggle_visual_mode();
-                Box::new(MainState)
-            }
-            KeyCode::Char('x') => {
-                app.yank_current_selection(true);
-                app.toggle_visual_mode();
-                Box::new(MainState)
-            }
-            KeyCode::Char('d') => Box::new(DeleteVisualSelectionState),
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if kb.matches(key, &vec!["esc".to_string()]) {
+            app.toggle_visual_mode();
+            return Box::new(MainState);
         }
+        if kb.matches(key, &kb.move_down) {
+            app.move_forward_in_cwd_list();
+            return self;
+        }
+        if kb.matches(key, &kb.move_up) {
+            app.move_back_in_cwd_list();
+            return self;
+        }
+        if kb.matches(key, &kb.yank) {
+            app.yank_current_selection(false);
+            app.toggle_visual_mode();
+            return Box::new(MainState);
+        }
+        if kb.matches(key, &kb.cut) {
+            app.yank_current_selection(true);
+            app.toggle_visual_mode();
+            return Box::new(MainState);
+        }
+        if kb.matches(key, &kb.delete) {
+            return Box::new(DeleteVisualSelectionState);
+        }
+
+        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
@@ -45,18 +48,19 @@ impl State for VisualSelectionState {
 
 impl State for DeleteVisualSelectionState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
-        match key {
-            KeyCode::Esc | KeyCode::Char('n') => {
-                app.toggle_visual_mode();
-                Box::new(MainState)
-            }
-            KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('d') => {
-                app.delete_current_selection();
-                app.toggle_visual_mode();
-                Box::new(MainState)
-            }
-            _ => self,
+        let kb = &app.config.keybindings;
+
+        if kb.matches(key, &vec!["esc".to_string(), "n".to_string()]) {
+            app.toggle_visual_mode();
+            return Box::new(MainState);
         }
+        if kb.matches(key, &vec!["enter".to_string(), "y".to_string()]) {
+            app.delete_current_selection();
+            app.toggle_visual_mode();
+            return Box::new(MainState);
+        }
+
+        self
     }
 
     fn render(&self, app: &App, frame: &mut Frame) {
