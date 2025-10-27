@@ -1,10 +1,19 @@
 <div align="center">
-# ⚡ blink
+  
+```
+██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗
+██╔══██╗██║     ██║████╗  ██║██║ ██╔╝
+██████╔╝██║     ██║██╔██╗ ██║█████╔╝ 
+██╔══██╗██║     ██║██║╚██╗██║██╔═██╗ 
+██████╔╝███████╗██║██║ ╚████║██║  ██╗
+╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+```
+
+<br>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 
-> Blink and you're there
 </div>
 
 A modern, intuitive file manager built in Rust that brings the speed of vim navigation to your file browsing experience. Navigate your filesystem with familiar keybindings, visual mode selections, and powerful file operations.
@@ -126,20 +135,6 @@ Blink stores its configuration and bookmarks in your system's config directory:
 
 - **Rust** 1.70+ (for building from source)
 - **Nerd Font** (recommended for best icon display)
-
-## 🤝 Contributing
-
-Contributions are welcome! Whether it's:
-- 🐛 Bug reports
-- 💡 Feature suggestions
-- 📖 Documentation improvements
-- 🔧 Code contributions
-
-Feel free to open an issue or submit a pull request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
