@@ -50,7 +50,7 @@ impl Operation for CopyFile {
             if self.old_path.is_dir() {
                 copy_directory_recursively(&self.old_path, &self.copy_path)?;
             } else {
-                fs::copy(&self.old_path, &self.dst_path)?;
+                fs::copy(&self.old_path, &self.copy_path)?;
             }
         }
         self.executed = true;
