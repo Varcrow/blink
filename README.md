@@ -1,6 +1,9 @@
 # ⚡ blink
 
-> Blink and you're there - a blazingly fast terminal file manager with vim-like motions
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+
+> Blink and you're there
 
 A modern, intuitive file manager built in Rust that brings the speed of vim navigation to your file browsing experience. Navigate your filesystem with familiar keybindings, visual mode selections, and powerful file operations.
 
@@ -9,9 +12,7 @@ A modern, intuitive file manager built in Rust that brings the speed of vim navi
 - **⚡ Lightning Fast Navigation** - Vim-like motions (j/k, g/G)
 - **👁️ Live Preview** - See file contents and directory listings as you navigate
 - **🎯 Visual Mode** - Select multiple files like in vim for batch operations
-- **↩️ Undo Support** - Accidentally delete something? Undo your last operation
 - **🔖 Bookmarks** - Tag and instantly jump to your favorite directories
-- **✂️ Cut/Copy/Paste** - Yank and paste files with familiar vim keybindings
 - **📝 Editor Integration** - Open files in your $EDITOR (vim, nvim, nano, etc.)
 - **🎨 Configurable** - Customize appearance behavior and keybindings to your liking
 - **🚀 Written in Rust** - Fast, safe, and reliable
@@ -136,7 +137,7 @@ Feel free to open an issue or submit a pull request.
 
 ## 📄 License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 

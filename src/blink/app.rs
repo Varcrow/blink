@@ -376,7 +376,11 @@ impl App {
     pub fn paste_yanked_path(&mut self) {
         if let Some(sources) = &self.yanked_entry_paths.clone() {
             if self.is_cut {
-                for source in sources {}
+                for source in sources {
+                    if let Some(filename) = source.file_name() {
+                        _ = self.operation_manager.rename_file(source.clone(), self.cwd.join(filename).clone())
+                    }
+                }
             } else {
                 for source in sources {
                     _ = self.operation_manager.copy_file(source.clone(), self.cwd.clone())
