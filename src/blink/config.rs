@@ -51,6 +51,7 @@ impl Config {
         let contents = fs::read_to_string(&config_path)?;
         let config: Config = toml::from_str(&contents)?;
         Ok(config)
+
     }
 
     fn save(&self) -> color_eyre::Result<()> {

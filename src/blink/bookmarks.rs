@@ -1,8 +1,8 @@
+use color_eyre::eyre::Ok;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use color_eyre::eyre::Ok;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Bookmarks {
@@ -54,12 +54,8 @@ impl Bookmarks {
         self.bookmarks.insert(tag, BookmarkEntry { path });
     }
 
-    pub fn remove(&mut self, tag: &str) -> Option<BookmarkEntry> {
-        self.bookmarks.remove(tag)
-    }
-
-    pub fn get(&self, tag: &str) -> Option<&BookmarkEntry> {
-        self.bookmarks.get(tag)
+    pub fn remove(&mut self, tag: String) -> Option<BookmarkEntry> {
+        self.bookmarks.remove(&tag)
     }
 
     pub fn list(&self) -> Vec<(&String, &BookmarkEntry)> {

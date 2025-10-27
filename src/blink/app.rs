@@ -168,9 +168,9 @@ impl App {
     pub fn new_path(&mut self, name: &str) {
         let new_path = self.cwd.join(name);
         if name.contains('.') {
-            fs::File::create(&new_path);
+            let _ = fs::File::create(&new_path);
         } else {
-            fs::create_dir_all(&new_path);
+            let _ = fs::create_dir_all(&new_path);
         }
         self.update_all_entries();
     }
@@ -179,7 +179,7 @@ impl App {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
                 let new_path = self.cwd.join(new_name);
-                fs::rename(&entry.path, &new_path);
+                let _ = fs::rename(&entry.path, &new_path);
                 self.update_all_entries();
             }
         }
@@ -201,9 +201,9 @@ impl App {
             if let Some(i) = self.list_state.selected() {
                 if let Some(entry) = self.cwd_entries.get(i) {
                     if entry.is_dir {
-                        fs::remove_dir_all(&entry.path);
+                        let _ = fs::remove_dir_all(&entry.path);
                     } else {
-                        fs::remove_file(&entry.path);
+                        let _ = fs::remove_file(&entry.path);
                     }
                     self.update_all_entries();
                 }
@@ -289,7 +289,7 @@ impl App {
                     i + 1
                 }
             }
-            None => 0,
+            _ => 0,
         };
         self.list_state.select(Some(i));
 
@@ -312,7 +312,7 @@ impl App {
                     i - 1
                 }
             }
-            None => 0,
+            _ => 0,
         };
         self.list_state.select(Some(i));
 
@@ -343,14 +343,21 @@ impl App {
         }
     }
 
-    pub fn create_bookmark(&mut self, name: String) {
+    pub fn create_bookmark(&mut self, name: String) -> color_eyre::Result<()> {
         self.bookmarks.add(name, self.cwd.clone());
-        self.bookmarks.save();
+        self.bookmarks.save()
+    }
+
+    pub fn delete_bookmark(&mut self, index: usize) -> color_eyre::Result<()> {
+        if let Some((tag, _)) = self.bookmarks.list().get(index) {
+            self.bookmarks.remove(tag.to_string());
+            let _ = self.bookmarks.save();
+        }
+        Ok(())
     }
 
     pub fn jump_to_bookmark(&mut self, index: usize) {
-        let bookmarks: Vec<_> = self.bookmarks.list();
-        if let Some((_, bookmark)) = bookmarks.get(index) {
+        if let Some((_, bookmark)) = self.bookmarks.list().get(index) {
             if bookmark.path.exists() {
                 self.update_cwd(bookmark.path.clone());
             }
@@ -386,9 +393,9 @@ impl App {
                     let editor_lower = editor.to_lowercase();
                     let terminal_editors = ["vi", "vim", "nvim", "nano", "emacs", "micro", "helix"];
                     if terminal_editors.iter().any(|&e| editor_lower.contains(e)) {
-                        self.open_with_terminal(&editor, &entry.path.clone());
+                        self.open_with_terminal(&editor, &entry.path.clone())?;
                     } else {
-                        open::with(&entry.path.clone(), editor);
+                        open::with(&entry.path.clone(), editor)?;
                     }
                 }
             }

@@ -8,7 +8,6 @@ pub struct FileEntry {
     pub path: PathBuf,
     pub name: String,
     pub is_dir: bool,
-    pub is_hidden: bool,
 }
 
 pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>> {
@@ -43,7 +42,7 @@ pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>>
         // ill leave it here for now
         let name = match entry.file_name().to_str() {
             Some(n) => n.to_string(),
-            None => continue,
+            _ => continue,
         };
         let is_hidden = name.starts_with('.');
         if is_hidden == true && show_hidden == false {
@@ -54,7 +53,6 @@ pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>>
             path,
             name,
             is_dir,
-            is_hidden,
         });
     }
 

@@ -14,7 +14,7 @@ pub trait State {
 pub struct MainState;
 pub struct DeletePathState;
 pub struct VisualSelectionState;
-pub struct VisualSelectionDeleteState;
+pub struct DeleteVisualSelectionState;
 pub struct NewPathState {
     input: String,
 }
@@ -26,6 +26,9 @@ pub struct NewBookmarkState {
 }
 pub struct BookmarkListState {
     list_state: ListState,
+}
+pub struct DeleteBookmarkState {
+    index: usize,
 }
 
 impl State for MainState {
@@ -64,11 +67,11 @@ impl State for MainState {
                 self
             }
             KeyCode::Char('o') => {
-                app.open_in_default_app();
+                let _ = app.open_in_default_app();
                 self
             }
             KeyCode::Char('e') => {
-                app.open_in_editor();
+                let _ = app.open_in_editor();
                 self
             }
             KeyCode::Char('t') => {
@@ -148,7 +151,7 @@ impl State for VisualSelectionState {
                 app.toggle_visual_mode();
                 Box::new(MainState)
             }
-            KeyCode::Char('d') => Box::new(VisualSelectionDeleteState),
+            KeyCode::Char('d') => Box::new(DeleteVisualSelectionState),
             _ => self,
         }
     }
@@ -158,7 +161,7 @@ impl State for VisualSelectionState {
     }
 }
 
-impl State for VisualSelectionDeleteState {
+impl State for DeleteVisualSelectionState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         match key {
             KeyCode::Esc | KeyCode::Char('n') => {
@@ -176,7 +179,7 @@ impl State for VisualSelectionDeleteState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
-        render_input_prompt_popup(frame, "Delete?".to_string(), "y / n".to_string());
+        render_input_prompt_popup(frame, "Delete selection?".to_string(), "y / n".to_string());
     }
 }
 
@@ -241,7 +244,7 @@ impl State for NewBookmarkState {
         match key {
             KeyCode::Esc => Box::new(MainState),
             KeyCode::Enter => {
-                app.create_bookmark(self.input);
+                let _ = app.create_bookmark(self.input);
                 Box::new(MainState)
             }
             KeyCode::Char(c) => {
@@ -274,6 +277,9 @@ impl State for BookmarkListState {
                 app.jump_to_bookmark(self.list_state.selected().unwrap_or_default());
                 Box::new(MainState)
             }
+            KeyCode::Char('d') => Box::new(DeleteBookmarkState {
+                index: self.list_state.selected().unwrap_or_default(),
+            }),
             KeyCode::Char('k') => {
                 let i = match self.list_state.selected() {
                     Some(i) => {
@@ -283,7 +289,7 @@ impl State for BookmarkListState {
                             i - 1
                         }
                     }
-                    None => 0,
+                    _ => 0,
                 };
                 self.list_state.select(Some(i));
                 self
@@ -297,7 +303,7 @@ impl State for BookmarkListState {
                             i + 1
                         }
                     }
-                    None => 0,
+                    _ => 0,
                 };
                 self.list_state.select(Some(i));
                 self
@@ -309,5 +315,23 @@ impl State for BookmarkListState {
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
         render_bookmark_list(app, frame, &mut self.list_state.clone());
+    }
+}
+
+impl State for DeleteBookmarkState {
+    fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
+        match key {
+            KeyCode::Esc | KeyCode::Char('n') => Box::new(MainState),
+            KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('d') => {
+                let _ = app.delete_bookmark(self.index);
+                Box::new(MainState)
+            }
+            _ => self,
+        }
+    }
+
+    fn render(&self, app: &App, frame: &mut Frame) {
+        render_app(app, frame);
+        render_input_prompt_popup(frame, "Delete bookmark?".to_string(), "y / n".to_string());
     }
 }
