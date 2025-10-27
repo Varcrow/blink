@@ -4,11 +4,7 @@ use crate::blink::{
 };
 use humansize::{DECIMAL, format_size};
 use ratatui::{
-    Frame,
-    layout::{Alignment, Constraint, Layout, Rect},
-    style::{Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
+    layout::{Alignment, Constraint, Layout, Rect}, style::{Modifier, Style}, text::{Line, Span}, widgets::{Block, Clear, HighlightSpacing, List, ListItem, ListState, Paragraph}, Frame
 };
 
 pub fn render_app(app: &App, frame: &mut Frame) {

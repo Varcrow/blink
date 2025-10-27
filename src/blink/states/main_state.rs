@@ -22,11 +22,11 @@ impl State for MainState {
             return self;
         }
         if kb.matches(key, &kb.move_down) {
-            app.move_forward_in_cwd_list();
+            app.move_cursor_down();
             return self;
         }
         if kb.matches(key, &kb.move_up) {
-            app.move_back_in_cwd_list();
+            app.move_cursor_up();
             return self;
         }
         if kb.matches(key, &kb.go_back) {

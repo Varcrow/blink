@@ -187,7 +187,11 @@ impl App {
         }
     }
 
-    pub fn move_forward_in_cwd_list(&mut self) {
+    pub fn move_cursor_down(&mut self) {
+        if self.cwd_entries.len() == 0 {
+            return;
+        }
+
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i >= self.cwd_entries.len() - 1 {
@@ -210,7 +214,11 @@ impl App {
         }
     }
 
-    pub fn move_back_in_cwd_list(&mut self) {
+    pub fn move_cursor_up(&mut self) {
+        if self.cwd_entries.len() == 0 {
+            return;
+        }
+
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -362,11 +370,16 @@ impl App {
                     _ = self.operation_manager.delete_file(entry.path.clone());
                 }
             }
+            self.move_cursor_up();
             self.update_all_entries();
         } else {
             if let Some(i) = self.list_state.selected() {
                 if let Some(entry) = self.cwd_entries.get(i) {
                     _ = self.operation_manager.delete_file(entry.path.clone());
+
+                    if i != 0 {
+                        self.move_cursor_up();
+                    }
                     self.update_all_entries();
                 }
             }
@@ -378,12 +391,16 @@ impl App {
             if self.is_cut {
                 for source in sources {
                     if let Some(filename) = source.file_name() {
-                        _ = self.operation_manager.rename_file(source.clone(), self.cwd.join(filename).clone())
+                        _ = self
+                            .operation_manager
+                            .rename_file(source.clone(), self.cwd.join(filename).clone())
                     }
                 }
             } else {
                 for source in sources {
-                    _ = self.operation_manager.copy_file(source.clone(), self.cwd.clone())
+                    _ = self
+                        .operation_manager
+                        .copy_file(source.clone(), self.cwd.clone())
                 }
             }
             self.yanked_entry_paths = None;
