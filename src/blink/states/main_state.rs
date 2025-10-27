@@ -72,7 +72,7 @@ impl State for MainState {
                 // TODO: Close tab
                 self
             }
-            KeyCode::Char('V') => {
+            KeyCode::Char('v') => {
                 app.toggle_visual_mode();
                 Box::new(VisualSelectionState)
             }

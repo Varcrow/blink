@@ -11,7 +11,6 @@ use ratatui::{
 };
 use std::time::Instant;
 use std::{fs, path::PathBuf, process::Command, time::Duration};
-use std::{io, path::Path};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub enum RunningState {
