@@ -1,6 +1,5 @@
 use crate::blink::entries::FileEntry;
 use ratatui::style::Color;
-use std::path::Path;
 
 pub fn get_file_icon(entry: &FileEntry) -> &'static str {
     // Check for directories first
@@ -310,12 +309,6 @@ pub fn is_executable(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(not(unix))]
-pub fn is_executable(_path: &Path) -> bool {
-    false
-}
-
-/// Enhanced version that checks for executable files on Unix
 pub fn get_file_icon_enhanced(entry: &FileEntry) -> &'static str {
     #[cfg(unix)]
     if !entry.is_dir && is_executable(&entry.path) {
