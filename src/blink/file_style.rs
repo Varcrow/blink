@@ -1,5 +1,6 @@
 use crate::blink::entries::FileEntry;
 use ratatui::style::Color;
+use std::path::Path;
 
 pub fn get_file_icon(entry: &FileEntry) -> &'static str {
     // Check for directories first
