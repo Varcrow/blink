@@ -1,7 +1,8 @@
 use crate::blink::{
     bookmarks::Bookmarks,
-    config::Config,
-    entries::{get_entries, FileEntry}, states::{main_state::MainState, state_trait::State},
+    config::config::Config,
+    entries::{FileEntry, get_entries},
+    states::{main_state::MainState, state_trait::State},
 };
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
