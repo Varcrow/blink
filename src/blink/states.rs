@@ -122,7 +122,7 @@ impl State for DeletePathState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
-        render_input_prompt_popup(frame, "Delete?".to_string(), "y / n".to_string());
+        render_input_prompt_popup(app, frame, "Delete?".to_string(), "y / n".to_string());
     }
 }
 
@@ -179,7 +179,7 @@ impl State for DeleteVisualSelectionState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
-        render_input_prompt_popup(frame, "Delete selection?".to_string(), "y / n".to_string());
+        render_input_prompt_popup(app,frame, "Delete selection?".to_string(), "y / n".to_string());
     }
 }
 
@@ -206,6 +206,7 @@ impl State for NewPathState {
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
         render_input_popup(
+            app,
             frame,
             "New entry".to_string(),
             format!("Name: {}", self.input),
@@ -235,7 +236,7 @@ impl State for RenamePathState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
-        render_input_popup(frame, "Rename".to_string(), format!("Name: {}", self.input))
+        render_input_popup(app, frame, "Rename".to_string(), format!("Name: {}", self.input))
     }
 }
 
@@ -262,6 +263,7 @@ impl State for NewBookmarkState {
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
         render_input_popup(
+            app,
             frame,
             "New bookmark".to_string(),
             format!("Name: {}", self.input),
@@ -332,6 +334,6 @@ impl State for DeleteBookmarkState {
 
     fn render(&self, app: &App, frame: &mut Frame) {
         render_app(app, frame);
-        render_input_prompt_popup(frame, "Delete bookmark?".to_string(), "y / n".to_string());
+        render_input_prompt_popup(app, frame, "Delete bookmark?".to_string(), "y / n".to_string());
     }
 }

@@ -2,12 +2,13 @@ use crate::blink::{
     app::{App, Preview},
     file_style::{get_file_color_enhanced, get_file_icon_enhanced},
 };
+use humansize::{DECIMAL, format_size};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
 pub fn render_app(app: &App, frame: &mut Frame) {
@@ -33,8 +34,8 @@ pub fn render_app(app: &App, frame: &mut Frame) {
 }
 
 fn render_current_dir_text(app: &App, frame: &mut Frame, area: Rect) {
-    let dir_text =
-        Paragraph::new(format!(" {}", app.cwd.display())).style(Style::default().fg(Color::White));
+    let dir_text = Paragraph::new(format!(" {}", app.cwd.display()))
+        .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color()));
     frame.render_widget(Clear, area);
     frame.render_widget(dir_text, area);
 }
@@ -46,23 +47,29 @@ fn render_parent_dir(app: &App, frame: &mut Frame, area: Rect) {
         .map(|entry| {
             let icon = get_file_icon_enhanced(entry);
             let style = Style::default().fg(get_file_color_enhanced(entry));
+            let entry_str = format!("{} {}", icon, entry.name);
 
             let line = Line::from(vec![
-                Span::raw(format!("{} ", icon)),
-                Span::styled(&entry.name, style),
+                Span::styled(entry_str, style),
             ]);
 
             ListItem::new(line)
         })
         .collect();
 
-    let parent_list = List::new(items).block(Block::bordered().border_type(BorderType::Plain));
+    let parent_list = List::new(items).block(
+        Block::bordered()
+            .border_type(app.config.ui.get_border_type())
+            .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+    );
 
     frame.render_widget(Clear, area);
     frame.render_widget(parent_list, area);
 }
 
 fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
+    let width = area.width as usize;
+
     let items: Vec<ListItem> = app
         .cwd_entries
         .iter()
@@ -71,14 +78,21 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
             let icon = get_file_icon_enhanced(entry);
             let mut style = Style::default().fg(get_file_color_enhanced(entry));
 
-            // Highlight selected items in visual mode
             if app.visual_mode && app.visual_selection.contains(&idx) {
-                style = style.bg(Color::DarkGray).add_modifier(Modifier::BOLD);
+                style = style
+                    .bg(app.config.colors.selected_bg.to_ratatui_color())
+                    .add_modifier(Modifier::BOLD);
             }
 
+            let size_str = format_size(entry.size, DECIMAL);
+            let entry_str = format!("{} {}", icon, entry.name);
+            let pad_len = width.saturating_sub(entry_str.len() + size_str.len());
+            let padding = " ".repeat(pad_len);
+
             let line = Line::from(vec![
-                Span::raw(format!("{} ", icon)),
-                Span::styled(&entry.name, style),
+                Span::styled(entry_str, style),
+                Span::raw(padding),
+                Span::raw(size_str),
             ]);
 
             ListItem::new(line)
@@ -86,10 +100,14 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
         .collect();
 
     let cwd_list = List::new(items)
-        .block(Block::bordered().border_type(BorderType::Plain))
+        .block(
+            Block::bordered()
+                .border_type(app.config.ui.get_border_type())
+                .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+        )
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(app.config.colors.selected_bg.to_ratatui_color())
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -100,8 +118,11 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
 fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
     match &app.preview_contents {
         Preview::File { contents } => {
-            let file_contents = Paragraph::new(contents.clone())
-                .block(Block::bordered().border_type(BorderType::Plain));
+            let file_contents = Paragraph::new(contents.clone()).block(
+                Block::bordered()
+                    .border_type(app.config.ui.get_border_type())
+                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+            );
             frame.render_widget(Clear, area);
             frame.render_widget(file_contents, area);
         }
@@ -111,18 +132,21 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
                 .map(|entry| {
                     let icon = get_file_icon_enhanced(entry);
                     let style = Style::default().fg(get_file_color_enhanced(entry));
+                    let entry_str = format!("{} {}", icon, entry.name);
 
                     let line = Line::from(vec![
-                        Span::raw(format!("{} ", icon)),
-                        Span::styled(&entry.name, style),
+                        Span::styled(entry_str, style),
                     ]);
 
                     ListItem::new(line)
                 })
                 .collect();
 
-            let preview_list =
-                List::new(preview_contents).block(Block::bordered().border_type(BorderType::Plain));
+            let preview_list = List::new(preview_contents).block(
+                Block::bordered()
+                    .border_type(app.config.ui.get_border_type())
+                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+            );
 
             frame.render_widget(Clear, area);
             frame.render_widget(preview_list, area);
@@ -146,22 +170,23 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
         dir_count, file_count, yank_status
     );
 
-    let status_bar = Paragraph::new(status).style(Style::default().fg(Color::White));
+    let status_bar = Paragraph::new(status)
+        .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color()));
 
     frame.render_widget(Clear, area);
     frame.render_widget(status_bar, area);
 }
 
 // Universal function for states that need to render input
-pub fn render_input_popup(frame: &mut Frame, title: String, content: String) {
+pub fn render_input_popup(app: &App, frame: &mut Frame, title: String, content: String) {
     let area = centered_rect(30, 15, frame.area());
     let popup = Paragraph::new(content)
         .block(
-            Block::default()
-                .borders(Borders::ALL)
+            Block::bordered()
                 .title(title)
                 .title_alignment(Alignment::Center)
-                .style(Style::default()),
+                .border_type(app.config.ui.get_border_type())
+                .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
         )
         .alignment(Alignment::Center);
 
@@ -169,15 +194,15 @@ pub fn render_input_popup(frame: &mut Frame, title: String, content: String) {
     frame.render_widget(popup, area);
 }
 
-pub fn render_input_prompt_popup(frame: &mut Frame, title: String, content: String) {
+pub fn render_input_prompt_popup(app: &App, frame: &mut Frame, title: String, content: String) {
     let area = centered_rect(30, 15, frame.area());
     let popup = Paragraph::new(content)
         .block(
-            Block::default()
-                .borders(Borders::ALL)
+            Block::bordered()
                 .title(title)
                 .title_alignment(Alignment::Center)
-                .style(Style::default()),
+                .border_type(app.config.ui.get_border_type())
+                .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
         )
         .alignment(Alignment::Center);
 
@@ -205,14 +230,15 @@ pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListS
 
     let bookmark_list = List::new(items)
         .block(
-            Block::default()
-                .borders(Borders::ALL)
+            Block::bordered()
                 .title("Bookmarks")
-                .title_alignment(Alignment::Center),
+                .title_alignment(Alignment::Center)
+                .border_type(app.config.ui.get_border_type())
+                .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color())),
         )
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(app.config.colors.selected_bg.to_ratatui_color())
                 .add_modifier(Modifier::BOLD),
         );
 

@@ -7,6 +7,7 @@ use std::{
 pub struct FileEntry {
     pub path: PathBuf,
     pub name: String,
+    pub size: u64,
     pub is_dir: bool,
 }
 
@@ -48,11 +49,13 @@ pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>>
         if is_hidden == true && show_hidden == false {
             continue;
         }
+        let size = metadata.len();
 
         entries.push(FileEntry {
             path,
             name,
             is_dir,
+            size,
         });
     }
 
