@@ -3,7 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrashManager {
     trash_dir: PathBuf,
 }
@@ -75,7 +75,7 @@ impl TrashManager {
         fs::rename(trash_path, original_path)
     }
 
-    fn empty_trash(&self) -> io::Result<()> {
+    pub fn empty_trash(&self) -> io::Result<()> {
         if self.trash_dir.exists() {
             fs::remove_dir_all(&self.trash_dir)?;
             fs::create_dir_all(&self.trash_dir)?;

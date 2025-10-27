@@ -3,7 +3,6 @@ use crate::blink::{
     rendering::render_app,
     states::{
         bookmark_states::{BookmarkListState, NewBookmarkState},
-        delete_path_state::DeletePathState,
         new_path_state::NewPathState,
         rename_path_state::RenamePathState,
         state_trait::State,
@@ -37,6 +36,10 @@ impl State for MainState {
                 app.enter_current_path_selection();
                 self
             }
+            KeyCode::Char('u') => {
+                app.undo_last_operation();
+                self
+            }
             KeyCode::Char('y') => {
                 app.yank_current_selection(false);
                 self
@@ -49,12 +52,16 @@ impl State for MainState {
                 app.paste_yanked_path();
                 self
             }
+            KeyCode::Char('d') => {
+                app.delete_current_selection();
+                self
+            }
             KeyCode::Char('o') => {
-                let _ = app.open_in_default_app();
+                _ = app.open_in_default_app();
                 self
             }
             KeyCode::Char('e') => {
-                let _ = app.open_in_editor();
+                _ = app.open_in_editor();
                 self
             }
             KeyCode::Char('t') => {
@@ -81,7 +88,6 @@ impl State for MainState {
             KeyCode::Char('B') => Box::new(NewBookmarkState {
                 input: String::new(),
             }),
-            KeyCode::Char('d') => Box::new(DeletePathState),
             _ => self,
         }
     }

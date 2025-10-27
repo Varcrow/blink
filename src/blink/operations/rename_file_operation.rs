@@ -9,7 +9,7 @@ pub struct RenameFile {
 }
 
 impl RenameFile {
-    fn new(old_path: PathBuf, new_path: PathBuf) -> Self {
+    pub fn new(old_path: PathBuf, new_path: PathBuf) -> Self {
         Self {
             old_path,
             new_path,
@@ -30,13 +30,5 @@ impl Operation for RenameFile {
             fs::rename(&self.new_path, &self.old_path)?;
         }
         Ok(())
-    }
-
-    fn description(&self) -> String {
-        format!(
-            "Rename: {} -> {}",
-            self.old_path.display(),
-            self.new_path.display()
-        )
     }
 }

@@ -2,9 +2,8 @@ use crate::blink::{
     bookmarks::Bookmarks,
     config::config::Config,
     entries::{FileEntry, get_entries},
-    operations::Operation,
+    operations::OperationManager,
     states::{main_state::MainState, state_trait::State},
-    trash_manager::TrashManager,
 };
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
@@ -39,8 +38,7 @@ impl Default for Preview {
 pub struct App {
     pub running_state: RunningState,
     pub state: Box<dyn State>,
-    pub previous_operations: Vec<Box<dyn Operation>>,
-    pub trash_manager: TrashManager,
+    pub operation_manager: OperationManager,
     pub list_state: ListState,
     pub cwd: PathBuf,
     pub yanked_entry_paths: Option<Vec<PathBuf>>,
@@ -64,8 +62,6 @@ impl App {
         let mut app = App {
             running_state: RunningState::Running,
             state: Box::new(MainState),
-            previous_operations: Vec::new(),
-            trash_manager: TrashManager::new()?,
             list_state: ListState::default().with_selected(Some(0)),
             cwd: path.clone(),
             yanked_entry_paths: None,
@@ -80,6 +76,7 @@ impl App {
             visual_mode: false,
             visual_anchor: None,
             visual_selection: Vec::new(),
+            operation_manager: OperationManager::new(50)?,
             bookmarks,
             config,
         };
@@ -171,52 +168,6 @@ impl App {
         }
     }
 
-    pub fn new_path(&mut self, name: &str) {
-        let new_path = self.cwd.join(name);
-        if name.contains('.') {
-            let _ = fs::File::create(&new_path);
-        } else {
-            let _ = fs::create_dir_all(&new_path);
-        }
-        self.update_all_entries();
-    }
-
-    pub fn rename_current_selected_path(&mut self, new_name: &str) {
-        if let Some(i) = self.list_state.selected() {
-            if let Some(entry) = self.cwd_entries.get(i) {
-                let new_path = self.cwd.join(new_name);
-                let _ = fs::rename(&entry.path, &new_path);
-                self.update_all_entries();
-            }
-        }
-    }
-
-    pub fn delete_current_selection(&mut self) {
-        if self.visual_mode && !self.visual_selection.is_empty() {
-            for &idx in &self.visual_selection {
-                if let Some(entry) = self.cwd_entries.get(idx) {
-                    if entry.is_dir {
-                        let _ = fs::remove_dir_all(&entry.path);
-                    } else {
-                        let _ = fs::remove_file(&entry.path);
-                    }
-                }
-            }
-            self.update_all_entries();
-        } else {
-            if let Some(i) = self.list_state.selected() {
-                if let Some(entry) = self.cwd_entries.get(i) {
-                    if entry.is_dir {
-                        let _ = fs::remove_dir_all(&entry.path);
-                    } else {
-                        let _ = fs::remove_file(&entry.path);
-                    }
-                    self.update_all_entries();
-                }
-            }
-        }
-    }
-
     pub fn yank_current_selection(&mut self, cut: bool) {
         if self.visual_mode {
             let paths: Vec<PathBuf> = self
@@ -234,55 +185,6 @@ impl App {
                     self.is_cut = cut;
                 }
             }
-        }
-    }
-
-    pub fn paste_yanked_path(&mut self) {
-        if let Some(sources) = &self.yanked_entry_paths.clone() {
-            for source in sources {
-                if let Some(filename) = source.file_name() {
-                    let mut destination = self.cwd.join(filename);
-                    if destination.exists() {
-                        let stem = destination
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .into_owned();
-                        let ext = destination
-                            .extension()
-                            .map(|e| format!(".{}", e.to_string_lossy()))
-                            .unwrap_or_default();
-                        let mut counter = 1;
-                        loop {
-                            destination = self.cwd.join(format!("{}_copy{}{}", stem, counter, ext));
-                            if !destination.exists() {
-                                break;
-                            }
-                            counter += 1;
-                        }
-                    }
-
-                    let result = if source.is_file() {
-                        fs::copy(source, &destination).map(|_| ())
-                    } else if source.is_dir() {
-                        self.copy_directory_recursively(source, &destination)
-                    } else {
-                        return;
-                    };
-                    if result.is_ok() {
-                        if self.is_cut {
-                            if source.is_file() {
-                                let _ = fs::remove_file(source);
-                            } else if source.is_dir() {
-                                let _ = fs::remove_dir_all(source);
-                            }
-                        }
-                    }
-                }
-            }
-            self.yanked_entry_paths = None;
-            self.is_cut = false;
-            self.update_all_entries();
         }
     }
 
@@ -370,24 +272,6 @@ impl App {
         }
     }
 
-    pub fn copy_directory_recursively(&self, src: &Path, dst: &Path) -> io::Result<()> {
-        fs::create_dir_all(dst)?;
-
-        for entry in fs::read_dir(src)? {
-            let entry = entry?;
-            let src_path = entry.path();
-            let dst_path = dst.join(entry.file_name());
-
-            if src_path.is_dir() {
-                self.copy_directory_recursively(&src_path, &dst_path)?;
-            } else {
-                fs::copy(&src_path, &dst_path)?;
-            }
-        }
-
-        Ok(())
-    }
-
     // checks if given path is a directory which would be list_state.selected()
     // if its a directory, set the terminal app current dir to it otherwise use cwd
     // Requires EDITOR or VISUAL variable to exist to open with editor
@@ -431,7 +315,7 @@ impl App {
         path: &std::path::Path,
     ) -> color_eyre::Result<()> {
         ratatui::restore();
-        let status = Command::new(editor)
+        _ = Command::new(editor)
             .arg(path)
             .current_dir(if path.is_dir() { path } else { &self.cwd })
             .status();
@@ -445,10 +329,63 @@ impl App {
             self.state.render(self, frame);
         })?;
 
-        if let Err(e) = status {
-            eprintln!("Failed to open editor '{}': {}", editor, e);
-        }
-
         Ok(())
+    }
+}
+
+// Operation functions
+impl App {
+    pub fn undo_last_operation(&mut self) {
+        _ = self.operation_manager.undo();
+        self.update_all_entries();
+    }
+
+    pub fn create_file(&mut self, name: &str) {
+        _ = self.operation_manager.create_file(self.cwd.join(name));
+        self.update_all_entries();
+    }
+
+    pub fn rename_current_selected_path(&mut self, new_name: &str) {
+        if let Some(i) = self.list_state.selected() {
+            if let Some(entry) = self.cwd_entries.get(i) {
+                _ = self
+                    .operation_manager
+                    .rename_file(entry.path.clone(), self.cwd.join(new_name));
+                self.update_all_entries();
+            }
+        }
+    }
+
+    pub fn delete_current_selection(&mut self) {
+        if self.visual_mode && !self.visual_selection.is_empty() {
+            for &idx in &self.visual_selection {
+                if let Some(entry) = self.cwd_entries.get(idx) {
+                    _ = self.operation_manager.delete_file(entry.path.clone());
+                }
+            }
+            self.update_all_entries();
+        } else {
+            if let Some(i) = self.list_state.selected() {
+                if let Some(entry) = self.cwd_entries.get(i) {
+                    _ = self.operation_manager.delete_file(entry.path.clone());
+                    self.update_all_entries();
+                }
+            }
+        }
+    }
+
+    pub fn paste_yanked_path(&mut self) {
+        if let Some(sources) = &self.yanked_entry_paths.clone() {
+            if self.is_cut {
+                for source in sources {}
+            } else {
+                for source in sources {
+                    _ = self.operation_manager.copy_file(source.clone(), self.cwd.clone())
+                }
+            }
+            self.yanked_entry_paths = None;
+            self.is_cut = false;
+            self.update_all_entries();
+        }
     }
 }

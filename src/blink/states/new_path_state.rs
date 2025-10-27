@@ -14,7 +14,7 @@ impl State for NewPathState {
         match key {
             KeyCode::Esc => Box::new(MainState),
             KeyCode::Enter => {
-                app.new_path(&*self.input);
+                app.create_file(&*self.input);
                 Box::new(MainState)
             }
             KeyCode::Char(c) => {

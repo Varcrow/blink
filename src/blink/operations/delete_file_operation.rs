@@ -9,7 +9,7 @@ pub struct DeleteFile {
 }
 
 impl DeleteFile {
-    fn new(path: PathBuf, trash_manager: TrashManager) -> Self {
+    pub fn new(path: PathBuf, trash_manager: TrashManager) -> Self {
         Self {
             path,
             trash_path: None,
@@ -35,9 +35,5 @@ impl Operation for DeleteFile {
             }
         }
         Ok(())
-    }
-
-    fn description(&self) -> String {
-        format!("Delete file: {}", self.path.display())
     }
 }

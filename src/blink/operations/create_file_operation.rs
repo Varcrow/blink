@@ -8,7 +8,7 @@ pub struct CreateFile {
 }
 
 impl CreateFile {
-    fn new(path: PathBuf) -> Self {
+    pub fn new(path: PathBuf) -> Self {
         Self {
             path,
             created: false,
@@ -29,12 +29,12 @@ impl Operation for CreateFile {
 
     fn undo(&self) -> io::Result<()> {
         if self.created && self.path.exists() {
-            fs::remove_file(&self.path)?;
+            if self.path.is_dir() {
+                fs::remove_dir_all(self.path.clone())?;
+            } else {
+                fs::remove_file(self.path.clone())?;
+            }
         }
         Ok(())
-    }
-
-    fn description(&self) -> String {
-        format!("Create file: {}", self.path.display())
     }
 }
