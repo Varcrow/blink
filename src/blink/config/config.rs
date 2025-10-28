@@ -76,7 +76,7 @@ impl Config {
     fn config_path() -> color_eyre::Result<PathBuf> {
         use directories::ProjectDirs;
 
-        let proj_dirs = ProjectDirs::from("com", "Varcrow", "blink")
+        let proj_dirs = ProjectDirs::from("", "", "blink")
             .ok_or_else(|| color_eyre::eyre::eyre!("Could not determine config directory"))?;
 
         let config_dir = proj_dirs.config_dir();
