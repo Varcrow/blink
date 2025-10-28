@@ -9,6 +9,8 @@ use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
     widgets::{Clear, ListState},
 };
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Instant;
 use std::{fs, path::PathBuf, process::Command, time::Duration};
 
@@ -23,13 +25,14 @@ pub enum RunningState {
 pub enum Preview {
     File { contents: String },
     Directory { entries: Vec<FileEntry> },
+    Image { path: PathBuf },
+    Binary { info: String },
 }
 
-// wtf is this
 impl Default for Preview {
     fn default() -> Self {
-        Self::File {
-            contents: String::new(),
+        Self::Binary {
+            info: String::new(),
         }
     }
 }
@@ -44,7 +47,8 @@ pub struct App {
     pub is_cut: bool,
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
-    pub preview_contents: Preview,
+    pub preview_contents: Arc<Mutex<Preview>>,
+    pub preview_loading_path: Option<PathBuf>,
     last_preview_update: Instant,
     debounce_time_ms: u128,
     pub visual_mode: bool,
@@ -67,9 +71,10 @@ impl App {
             is_cut: false,
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
-            preview_contents: Preview::File {
+            preview_contents: Arc::new(Mutex::new(Preview::File {
                 contents: String::new(),
-            },
+            })),
+            preview_loading_path: None,
             last_preview_update: Instant::now(),
             debounce_time_ms: 100,
             visual_mode: false,
@@ -126,15 +131,67 @@ impl App {
     fn update_preview_contents(&mut self) {
         if let Some(selected_idx) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(selected_idx) {
-                if entry.is_dir {
-                    let entries =
-                        get_entries(self.config.ui.show_hidden, &entry.path).unwrap_or_default();
-                    self.preview_contents = Preview::Directory { entries }
-                } else {
-                    let contents = fs::read_to_string(&entry.path)
-                        .unwrap_or_else(|_| "[Binary file]".to_string());
-                    self.preview_contents = Preview::File { contents }
+                let path = entry.path.clone();
+
+                // don't start a new load if we're already loading this path
+                if self.preview_loading_path.as_ref() == Some(&path) {
+                    return;
                 }
+
+                self.preview_loading_path = Some(path.clone());
+                let is_dir = entry.is_dir;
+                let show_hidden = self.config.ui.show_hidden;
+                let preview = Arc::clone(&self.preview_contents);
+
+                thread::spawn(move || {
+                    let new_preview = if is_dir {
+                        Preview::Directory {
+                            entries: get_entries(show_hidden, &path).unwrap_or_default(),
+                        }
+                    } else {
+                        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                            let ext_lower = ext.to_lowercase();
+                            if matches!(
+                                ext_lower.as_str(),
+                                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp"
+                            ) {
+                                if let Ok(mut p) = preview.lock() {
+                                    *p = Preview::Image { path: path.clone() };
+                                }
+                                return;
+                            }
+                        }
+
+                        match fs::read(&path) {
+                            Ok(bytes) => {
+                                let preview_bytes = if bytes.len() > 1_000_000 {
+                                    &bytes[..1_000_000]
+                                } else {
+                                    &bytes
+                                };
+
+                                let check_len = preview_bytes.len().min(8192);
+                                if preview_bytes[..check_len].contains(&0) {
+                                    Preview::Binary {
+                                        info: format!("Binary file ({} bytes)", bytes.len()),
+                                    }
+                                } else {
+                                    Preview::File {
+                                        contents: String::from_utf8_lossy(preview_bytes)
+                                            .to_string(),
+                                    }
+                                }
+                            }
+                            Err(_) => Preview::File {
+                                contents: "[Cannot read file]".to_string(),
+                            },
+                        }
+                    };
+
+                    if let Ok(mut p) = preview.lock() {
+                        *p = new_preview;
+                    }
+                });
             }
         }
     }

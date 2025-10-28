@@ -52,9 +52,11 @@ impl OperationManager {
         }
     }
 
+    /*
     fn empty_trash(&self) -> io::Result<()> {
         self.trash_manager.empty_trash()
     }
+    */
 
     pub fn create_file(&mut self, path: PathBuf) -> io::Result<()> {
         let op = Box::new(CreateFile::new(path));

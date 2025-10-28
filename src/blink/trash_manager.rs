@@ -75,6 +75,7 @@ impl TrashManager {
         fs::rename(trash_path, original_path)
     }
 
+    /*
     pub fn empty_trash(&self) -> io::Result<()> {
         if self.trash_dir.exists() {
             fs::remove_dir_all(&self.trash_dir)?;
@@ -82,4 +83,5 @@ impl TrashManager {
         }
         Ok(())
     }
+    */
 }
