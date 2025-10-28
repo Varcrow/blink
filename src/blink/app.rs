@@ -176,8 +176,6 @@ impl App {
                 let show_hidden = self.config.ui.show_hidden;
                 let preview = Arc::clone(&self.preview_contents);
 
-                let loading_path = Arc::new(Mutex::new(self.preview_loading_path.clone()));
-
                 let result = self.thread_pool.try_execute(move || {
                     let new_preview = if is_dir {
                         Preview::Directory {
