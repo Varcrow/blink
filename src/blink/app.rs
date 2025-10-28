@@ -36,7 +36,7 @@ impl ThreadPool {
         ThreadPool { workers, sender }
     }
 
-    /// Try to submit a job, returns Err if queue is full
+    // Try to submit a job, returns Err if queue is full
     fn try_execute<F>(&self, f: F) -> Result<(), mpsc::TrySendError<Box<dyn FnOnce() + Send>>>
     where
         F: FnOnce() + Send + 'static,
@@ -73,6 +73,8 @@ pub struct App {
     pub state: Box<dyn State>,
     pub operation_manager: OperationManager,
     thread_pool: ThreadPool,
+    last_preview_update: std::time::Instant,
+    debounce_time_ms: u128,
     pub list_state: ListState,
     pub cwd: PathBuf,
     pub yanked_entry_paths: Option<Vec<PathBuf>>,
@@ -109,7 +111,9 @@ impl App {
             visual_anchor: None,
             visual_selection: Vec::new(),
             operation_manager: OperationManager::new(50)?,
-            thread_pool: ThreadPool::new(2, 0),
+            thread_pool: ThreadPool::new(1, 2),
+            last_preview_update: std::time::Instant::now(),
+            debounce_time_ms: 100,
             bookmarks,
             config,
         };
@@ -172,7 +176,9 @@ impl App {
                 let show_hidden = self.config.ui.show_hidden;
                 let preview = Arc::clone(&self.preview_contents);
 
-                _ = self.thread_pool.try_execute(move || {
+                let loading_path = Arc::new(Mutex::new(self.preview_loading_path.clone()));
+
+                let result = self.thread_pool.try_execute(move || {
                     let new_preview = if is_dir {
                         Preview::Directory {
                             entries: get_entries(show_hidden, &path).unwrap_or_default(),
@@ -221,6 +227,10 @@ impl App {
                         *p = new_preview;
                     }
                 });
+
+                if result.is_err() {
+                    self.preview_loading_path = None;
+                }
             }
         }
     }
@@ -293,8 +303,10 @@ impl App {
         if self.visual_mode {
             self.update_visual_selection();
         }
-
-        self.update_preview_contents();
+        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
+            self.update_preview_contents();
+            self.last_preview_update = std::time::Instant::now();
+        }
     }
 
     pub fn move_cursor_up(&mut self) {
@@ -318,7 +330,10 @@ impl App {
             self.update_visual_selection();
         }
 
-        self.update_preview_contents();
+        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
+            self.update_preview_contents();
+            self.last_preview_update = std::time::Instant::now();
+        }
     }
 
     pub fn enter_current_path_selection(&mut self) {
