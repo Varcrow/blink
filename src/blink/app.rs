@@ -4,46 +4,14 @@ use crate::blink::{
     entries::{FileEntry, get_entries},
     operations::OperationManager,
     states::{main_state::MainState, state_trait::State},
+    thread_pool::ThreadPool,
 };
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
     widgets::{Clear, ListState},
 };
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
+use std::sync::{Arc, Mutex};
 use std::{fs, path::PathBuf, process::Command, time::Duration};
-
-struct ThreadPool {
-    workers: Vec<thread::JoinHandle<()>>,
-    sender: mpsc::SyncSender<Box<dyn FnOnce() + Send + 'static>>,
-}
-
-impl ThreadPool {
-    fn new(size: usize, queue_size: usize) -> Self {
-        let (sender, receiver) = mpsc::sync_channel::<Box<dyn FnOnce() + Send>>(queue_size);
-        let receiver = Arc::new(Mutex::new(receiver));
-
-        let mut workers = Vec::with_capacity(size);
-        for _ in 0..size {
-            let r = Arc::clone(&receiver);
-            workers.push(thread::spawn(move || {
-                while let Ok(job) = r.lock().unwrap().recv() {
-                    job();
-                }
-            }));
-        }
-
-        ThreadPool { workers, sender }
-    }
-
-    // Try to submit a job, returns Err if queue is full
-    fn try_execute<F>(&self, f: F) -> Result<(), mpsc::TrySendError<Box<dyn FnOnce() + Send>>>
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        self.sender.try_send(Box::new(f))
-    }
-}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub enum RunningState {

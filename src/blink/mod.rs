@@ -7,3 +7,4 @@ pub mod config;
 pub mod bookmarks;
 pub mod operations;
 pub mod trash_manager;
+pub mod thread_pool;
