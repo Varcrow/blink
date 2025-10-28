@@ -9,10 +9,41 @@ use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
     widgets::{Clear, ListState},
 };
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use std::time::Instant;
 use std::{fs, path::PathBuf, process::Command, time::Duration};
+
+struct ThreadPool {
+    workers: Vec<thread::JoinHandle<()>>,
+    sender: mpsc::SyncSender<Box<dyn FnOnce() + Send + 'static>>,
+}
+
+impl ThreadPool {
+    fn new(size: usize, queue_size: usize) -> Self {
+        let (sender, receiver) = mpsc::sync_channel::<Box<dyn FnOnce() + Send>>(queue_size);
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let mut workers = Vec::with_capacity(size);
+        for _ in 0..size {
+            let r = Arc::clone(&receiver);
+            workers.push(thread::spawn(move || {
+                while let Ok(job) = r.lock().unwrap().recv() {
+                    job();
+                }
+            }));
+        }
+
+        ThreadPool { workers, sender }
+    }
+
+    /// Try to submit a job, returns Err if queue is full
+    fn try_execute<F>(&self, f: F) -> Result<(), mpsc::TrySendError<Box<dyn FnOnce() + Send>>>
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender.try_send(Box::new(f))
+    }
+}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub enum RunningState {
@@ -41,6 +72,7 @@ pub struct App {
     pub running_state: RunningState,
     pub state: Box<dyn State>,
     pub operation_manager: OperationManager,
+    thread_pool: ThreadPool,
     pub list_state: ListState,
     pub cwd: PathBuf,
     pub yanked_entry_paths: Option<Vec<PathBuf>>,
@@ -49,8 +81,6 @@ pub struct App {
     pub cwd_entries: Vec<FileEntry>,
     pub preview_contents: Arc<Mutex<Preview>>,
     pub preview_loading_path: Option<PathBuf>,
-    last_preview_update: Instant,
-    debounce_time_ms: u128,
     pub visual_mode: bool,
     pub visual_anchor: Option<usize>,
     pub visual_selection: Vec<usize>,
@@ -75,12 +105,11 @@ impl App {
                 contents: String::new(),
             })),
             preview_loading_path: None,
-            last_preview_update: Instant::now(),
-            debounce_time_ms: 100,
             visual_mode: false,
             visual_anchor: None,
             visual_selection: Vec::new(),
             operation_manager: OperationManager::new(50)?,
+            thread_pool: ThreadPool::new(2, 0),
             bookmarks,
             config,
         };
@@ -143,7 +172,7 @@ impl App {
                 let show_hidden = self.config.ui.show_hidden;
                 let preview = Arc::clone(&self.preview_contents);
 
-                thread::spawn(move || {
+                _ = self.thread_pool.try_execute(move || {
                     let new_preview = if is_dir {
                         Preview::Directory {
                             entries: get_entries(show_hidden, &path).unwrap_or_default(),
@@ -265,10 +294,7 @@ impl App {
             self.update_visual_selection();
         }
 
-        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
-            self.update_preview_contents();
-            self.last_preview_update = Instant::now();
-        }
+        self.update_preview_contents();
     }
 
     pub fn move_cursor_up(&mut self) {
@@ -292,10 +318,7 @@ impl App {
             self.update_visual_selection();
         }
 
-        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
-            self.update_preview_contents();
-            self.last_preview_update = Instant::now();
-        }
+        self.update_preview_contents();
     }
 
     pub fn enter_current_path_selection(&mut self) {
