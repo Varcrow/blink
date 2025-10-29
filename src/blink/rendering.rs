@@ -97,6 +97,7 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
         .collect();
 
     let cwd_list = List::new(items)
+        .scroll_padding((area.height / 2) as usize) // GHETO SCROLL FIX
         .block(
             Block::bordered()
                 .border_type(app.config.ui.get_border_type())
@@ -140,9 +141,7 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
             let file_contents = Paragraph::new(contents).block(
                 Block::bordered()
                     .border_type(app.config.ui.get_border_type())
-                    .border_style(
-                        Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                    ),
+                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
             );
             frame.render_widget(Clear, area);
             frame.render_widget(file_contents, area);
@@ -161,9 +160,7 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
             let preview_list = List::new(preview_contents).block(
                 Block::bordered()
                     .border_type(app.config.ui.get_border_type())
-                    .border_style(
-                        Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                    ),
+                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
             );
             frame.render_widget(Clear, area);
             frame.render_widget(preview_list, area);
@@ -172,9 +169,7 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
             let content = Paragraph::new(path.display().to_string()).block(
                 Block::bordered()
                     .border_type(app.config.ui.get_border_type())
-                    .border_style(
-                        Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                    ),
+                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
             );
             frame.render_widget(Clear, area);
             frame.render_widget(content, area);
@@ -183,9 +178,7 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
             let content = Paragraph::new(info).block(
                 Block::bordered()
                     .border_type(app.config.ui.get_border_type())
-                    .border_style(
-                        Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                    ),
+                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
             );
             frame.render_widget(Clear, area);
             frame.render_widget(content, area);

@@ -274,6 +274,14 @@ impl App {
         }
     }
 
+    pub fn jump_to_top(&mut self) {
+        self.list_state.select(Some(0)); 
+    }
+
+    pub fn jump_to_bottom(&mut self) {
+        self.list_state.select(Some(self.cwd_entries.len() - 1)); 
+    }
+
     // checks if given path is a directory which would be list_state.selected()
     // if its a directory, set the terminal app current dir to it otherwise use cwd
     // Requires EDITOR or VISUAL variable to exist to open with editor

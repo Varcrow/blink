@@ -37,6 +37,14 @@ impl State for MainState {
             app.enter_current_path_selection();
             return self;
         }
+        if kb.matches(key, &vec!["g".to_string()]) {
+            app.jump_to_top();
+            return self;
+        }
+        if kb.matches(key, &vec!["G".to_string()]) {
+            app.jump_to_bottom();
+            return self;
+        }
         if kb.matches(key, &kb.undo) {
             app.undo_last_operation();
             return self;
