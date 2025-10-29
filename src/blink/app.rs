@@ -10,7 +10,7 @@ use ratatui::{
     crossterm::event::{self, Event, KeyEventKind},
     widgets::{Clear, ListState},
 };
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -126,7 +126,6 @@ impl App {
 
     fn preload_previews(&mut self) {
         let entries = self.cwd_entries.clone();
-
         for (_, entry) in entries.iter().enumerate() {
             let path = entry.path.clone();
             let is_dir = entry.is_dir;
@@ -408,7 +407,7 @@ impl App {
 
 fn load_directory_preview(show_hidden: bool, path: &Path) -> Preview {
     Preview::Directory {
-        entries: get_entries(show_hidden, path).unwrap(),
+        entries: get_entries(show_hidden, path).unwrap_or_default(),
     }
 }
 
