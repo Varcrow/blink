@@ -282,6 +282,11 @@ impl App {
         self.list_state.select(Some(self.cwd_entries.len() - 1)); 
     }
 
+    pub fn toggle_hidden_file_visibility(&mut self) {
+        self.config.ui.show_hidden = !self.config.ui.show_hidden;
+        self.update_all_entries();
+    }
+
     // checks if given path is a directory which would be list_state.selected()
     // if its a directory, set the terminal app current dir to it otherwise use cwd
     // Requires EDITOR or VISUAL variable to exist to open with editor
