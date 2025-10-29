@@ -25,7 +25,7 @@ pub enum RunningState {
     Done,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Preview {
     File { contents: String },
     Directory { entries: Vec<FileEntry> },
@@ -46,16 +46,12 @@ pub struct App {
     pub state: Box<dyn State>,
     pub operation_manager: OperationManager,
     thread_pool: ThreadPool,
-    last_preview_update: std::time::Instant,
-    debounce_time_ms: u128,
     pub list_state: ListState,
     pub cwd: PathBuf,
     pub yanked_entry_paths: Option<Vec<PathBuf>>,
     pub is_cut: bool,
     pub parent_dir_entries: Vec<FileEntry>,
     pub cwd_entries: Vec<FileEntry>,
-    pub preview_contents: Arc<Mutex<Preview>>,
-    pub preview_loading_path: Option<PathBuf>,
     pub visual_mode: bool,
     pub visual_anchor: Option<usize>,
     pub visual_selection: Vec<usize>,
@@ -76,17 +72,11 @@ impl App {
             is_cut: false,
             parent_dir_entries: Vec::new(),
             cwd_entries: Vec::new(),
-            preview_contents: Arc::new(Mutex::new(Preview::File {
-                contents: String::new(),
-            })),
-            preview_loading_path: None,
             visual_mode: false,
             visual_anchor: None,
             visual_selection: Vec::new(),
             operation_manager: OperationManager::new(50)?,
-            thread_pool: ThreadPool::new(1, 2),
-            last_preview_update: std::time::Instant::now(),
-            debounce_time_ms: 100,
+            thread_pool: ThreadPool::new(1, 1024),
             bookmarks,
             config,
         };
@@ -118,7 +108,6 @@ impl App {
         self.cwd = path;
         self.list_state.select(Some(0));
         self.update_all_entries();
-        self.preload_previews();
     }
 
     fn update_cwd_entries(&mut self) {
@@ -135,87 +124,6 @@ impl App {
         }
     }
 
-    fn update_preview_contents(&mut self) {
-        if let Some(selected_idx) = self.list_state.selected() {
-            if let Some(entry) = self.cwd_entries.get(selected_idx) {
-                let path = entry.path.clone();
-
-                // Don't start new load if already loading this path
-                if self.preview_loading_path.as_ref() == Some(&path) {
-                    return;
-                }
-
-                // Don't load if we just loaded something recently (debounce)
-                if self.last_preview_update.elapsed().as_millis() < self.debounce_time_ms {
-                    return;
-                }
-
-                self.preview_loading_path = Some(path.clone());
-                self.last_preview_update = std::time::Instant::now();
-
-                let is_dir = entry.is_dir;
-                let show_hidden = self.config.ui.show_hidden;
-                let preview = Arc::clone(&self.preview_contents);
-
-                let result = self.thread_pool.try_execute(move || {
-                    let new_preview = if is_dir {
-                        Preview::Directory {
-                            entries: get_entries(show_hidden, &path).unwrap_or_default(),
-                        }
-                    } else {
-                        // Check for image first
-                        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                            let ext_lower = ext.to_lowercase();
-                            if matches!(
-                                ext_lower.as_str(),
-                                "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp"
-                            ) {
-                                if let Ok(mut p) = preview.lock() {
-                                    *p = Preview::Image { path: path.clone() };
-                                }
-                                return;
-                            }
-                        }
-
-                        match fs::read(&path) {
-                            Ok(bytes) => {
-                                // Only check first 8KB for binary detection
-                                let check_len = bytes.len().min(8192);
-                                if bytes[..check_len].contains(&0) {
-                                    Preview::Binary {
-                                        info: format!("Binary file ({} bytes)", bytes.len()),
-                                    }
-                                } else {
-                                    // Only keep first 1MB for preview
-                                    let preview_bytes = if bytes.len() > 1_000_000 {
-                                        &bytes[..1_000_000]
-                                    } else {
-                                        &bytes
-                                    };
-                                    Preview::File {
-                                        contents: String::from_utf8_lossy(preview_bytes)
-                                            .to_string(),
-                                    }
-                                }
-                            }
-                            Err(_) => Preview::File {
-                                contents: "[Cannot read file]".to_string(),
-                            },
-                        }
-                    };
-
-                    if let Ok(mut p) = preview.lock() {
-                        *p = new_preview;
-                    }
-                });
-
-                if result.is_err() {
-                    self.preview_loading_path = None;
-                }
-            }
-        }
-    }
-
     fn preload_previews(&mut self) {
         let entries = self.cwd_entries.clone();
 
@@ -224,13 +132,12 @@ impl App {
             let is_dir = entry.is_dir;
             let preview = Arc::clone(&entry.preview);
 
-            // Only preload files, not directories (too expensive)
-            if is_dir {
-                continue;
-            }
-
             let _ = self.thread_pool.try_execute(move || {
-                let new_preview = load_file_preview(&path);
+                let new_preview = if is_dir {
+                    load_directory_preview(true, &path)
+                } else {
+                    load_file_preview(&path)
+                };
                 if let Ok(mut p) = preview.lock() {
                     *p = new_preview;
                 }
@@ -241,7 +148,7 @@ impl App {
     fn update_all_entries(&mut self) {
         self.update_cwd_entries();
         self.update_parent_dir_entries();
-        self.update_preview_contents();
+        self.preload_previews();
     }
 
     pub fn toggle_visual_mode(&mut self) {
@@ -306,7 +213,6 @@ impl App {
         if self.visual_mode {
             self.update_visual_selection();
         }
-        self.update_preview_contents();
     }
 
     pub fn move_cursor_up(&mut self) {
@@ -329,7 +235,6 @@ impl App {
         if self.visual_mode {
             self.update_visual_selection();
         }
-        self.update_preview_contents();
     }
 
     pub fn enter_current_path_selection(&mut self) {
@@ -501,8 +406,13 @@ impl App {
     }
 }
 
+fn load_directory_preview(show_hidden: bool, path: &Path) -> Preview {
+    Preview::Directory {
+        entries: get_entries(show_hidden, path).unwrap(),
+    }
+}
+
 fn load_file_preview(path: &Path) -> Preview {
-    // Check for images
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         let ext_lower = ext.to_lowercase();
         if matches!(
@@ -515,7 +425,6 @@ fn load_file_preview(path: &Path) -> Preview {
         }
     }
 
-    // Read and check for binary
     match fs::read(path) {
         Ok(bytes) => {
             let check_len = bytes.len().min(8192);

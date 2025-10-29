@@ -81,7 +81,6 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
                     .add_modifier(Modifier::BOLD);
             }
 
-            //let size_str = format_size(entry.size, DECIMAL);
             let size_str = format!("{}", entry.size);
             let entry_str = format!("{} {}", icon, entry.name);
             let pad_len = width.saturating_sub(entry_str.len() + size_str.len());
@@ -114,65 +113,71 @@ fn render_current_dir(app: &App, frame: &mut Frame, area: Rect) {
 }
 
 fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
-    if let Ok(preview) = app.preview_contents.lock() {
-        match &*preview {
-            Preview::File { contents } => {
-                let file_contents = Paragraph::new(contents.clone()).block(
-                    Block::bordered()
-                        .border_type(app.config.ui.get_border_type())
-                        .border_style(
-                            Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                        ),
-                );
-                frame.render_widget(Clear, area);
-                frame.render_widget(file_contents, area);
-            }
-            Preview::Directory { entries } => {
-                let preview_contents: Vec<ListItem> = entries
-                    .iter()
-                    .map(|entry| {
-                        let icon = get_file_icon_enhanced(entry);
-                        let style = Style::default().fg(get_file_color_enhanced(entry));
-                        let entry_str = format!("{} {}", icon, entry.name);
+    if let Some(idx) = app.list_state.selected() {
+        if let Some(selected_entry) = app.cwd_entries.get(idx) {
+            let preview = if let Ok(guard) = selected_entry.preview.lock() {
+                guard.clone()
+            } else {
+                Preview::Binary {
+                    info: "Loading...".to_string(),
+                }
+            };
 
-                        let line = Line::from(vec![Span::styled(entry_str, style)]);
-
-                        ListItem::new(line)
-                    })
-                    .collect();
-
-                let preview_list = List::new(preview_contents).block(
-                    Block::bordered()
-                        .border_type(app.config.ui.get_border_type())
-                        .border_style(
-                            Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                        ),
-                );
-
-                frame.render_widget(Clear, area);
-                frame.render_widget(preview_list, area);
-            }
-            Preview::Image { path } => {
-                let content = Paragraph::new(path.display().to_string()).block(
-                    Block::bordered()
-                        .border_type(app.config.ui.get_border_type())
-                        .border_style(
-                            Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                        ),
-                );
-                frame.render_widget(Clear, area);
-                frame.render_widget(content, area);
-            }
-            Preview::Binary { info } => {
-                let content = Paragraph::new(info.clone()).block(
-                    Block::bordered()
-                        .border_type(app.config.ui.get_border_type())
-                        .border_style(
-                            Style::default().fg(app.config.colors.border.to_ratatui_color()),
-                        ),
-                );
-                frame.render_widget(Clear, area);
-                frame.render_widget(content, area);
+            match preview {
+                Preview::File { contents } => {
+                    let file_contents = Paragraph::new(contents).block(
+                        Block::bordered()
+                            .border_type(app.config.ui.get_border_type())
+                            .border_style(
+                                Style::default().fg(app.config.colors.border.to_ratatui_color()),
+                            ),
+                    );
+                    frame.render_widget(Clear, area);
+                    frame.render_widget(file_contents, area);
+                }
+                Preview::Directory { entries } => {
+                    let preview_contents: Vec<ListItem> = entries
+                        .iter()
+                        .map(|entry| {
+                            let icon = get_file_icon_enhanced(entry);
+                            let style = Style::default().fg(get_file_color_enhanced(entry));
+                            let entry_str = format!("{} {}", icon, entry.name);
+                            let line = Line::from(vec![Span::styled(entry_str, style)]);
+                            ListItem::new(line)
+                        })
+                        .collect();
+                    let preview_list = List::new(preview_contents).block(
+                        Block::bordered()
+                            .border_type(app.config.ui.get_border_type())
+                            .border_style(
+                                Style::default().fg(app.config.colors.border.to_ratatui_color()),
+                            ),
+                    );
+                    frame.render_widget(Clear, area);
+                    frame.render_widget(preview_list, area);
+                }
+                Preview::Image { path } => {
+                    let content = Paragraph::new(path.display().to_string()).block(
+                        Block::bordered()
+                            .border_type(app.config.ui.get_border_type())
+                            .border_style(
+                                Style::default().fg(app.config.colors.border.to_ratatui_color()),
+                            ),
+                    );
+                    frame.render_widget(Clear, area);
+                    frame.render_widget(content, area);
+                }
+                Preview::Binary { info } => {
+                    let content = Paragraph::new(info).block(
+                        Block::bordered()
+                            .border_type(app.config.ui.get_border_type())
+                            .border_style(
+                                Style::default().fg(app.config.colors.border.to_ratatui_color()),
+                            ),
+                    );
+                    frame.render_widget(Clear, area);
+                    frame.render_widget(content, area);
+                }
             }
         }
     }
