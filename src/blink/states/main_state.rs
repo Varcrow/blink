@@ -37,6 +37,14 @@ impl State for MainState {
             app.enter_current_path_selection();
             return self;
         }
+        if kb.matches(key, &kb.jump_to_top) {
+            app.jump_to_top();
+            return self;
+        }
+        if kb.matches(key, &kb.jump_to_bottom) {
+            app.jump_to_bottom();
+            return self;
+        }
         if kb.matches(key, &kb.undo) {
             app.undo_last_operation();
             return self;
@@ -63,6 +71,14 @@ impl State for MainState {
         }
         if kb.matches(key, &kb.open_editor) {
             _ = app.open_in_editor();
+            return self;
+        }
+        if kb.matches(key, &kb.toggle_hidden) {
+            app.toggle_hidden_file_visibility();
+            return self;
+        }
+        if kb.matches(key, &vec!["`".to_string()]) {
+            app.toggle_hidden_file_visibility();
             return self;
         }
         if kb.matches(key, &kb.visual_mode) {

@@ -12,6 +12,10 @@ pub struct Keybindings {
     pub go_back: Vec<String>,
     #[serde(default = "default_key_right")]
     pub go_forward: Vec<String>,
+    #[serde(default = "default_key_jump_to_top")]
+    pub jump_to_top: Vec<String>,
+    #[serde(default = "default_key_jump_to_bottom")]
+    pub jump_to_bottom: Vec<String>,
 
     // File operations
     #[serde(default = "default_key_yank")]
@@ -46,6 +50,8 @@ pub struct Keybindings {
     // Misc
     #[serde(default = "default_key_undo")]
     pub undo: Vec<String>,
+    #[serde(default = "default_key_toggle_hidden")]
+    pub toggle_hidden: Vec<String>,
     #[serde(default = "default_key_quit")]
     pub quit: Vec<String>,
 }
@@ -57,6 +63,8 @@ impl Default for Keybindings {
             move_up: default_key_up(),
             go_back: default_key_left(),
             go_forward: default_key_right(),
+            jump_to_top: default_key_jump_to_top(),
+            jump_to_bottom: default_key_jump_to_bottom(),
             yank: default_key_yank(),
             cut: default_key_cut(),
             paste: default_key_paste(),
@@ -69,6 +77,7 @@ impl Default for Keybindings {
             bookmark_list: default_key_bookmark_list(),
             bookmark_new: default_key_bookmark_new(),
             undo: default_key_undo(),
+            toggle_hidden: default_key_toggle_hidden(),
             quit: default_key_quit(),
         }
     }
@@ -118,6 +127,14 @@ fn default_key_right() -> Vec<String> {
     vec!["l".to_string(), "right".to_string()]
 }
 
+fn default_key_jump_to_top() -> Vec<String> {
+    vec!["g".to_string()]
+}
+
+fn default_key_jump_to_bottom() -> Vec<String> {
+    vec!["G".to_string()]
+}
+
 fn default_key_yank() -> Vec<String> {
     vec!["y".to_string()]
 }
@@ -164,6 +181,10 @@ fn default_key_bookmark_new() -> Vec<String> {
 
 fn default_key_undo() -> Vec<String> {
     vec!["u".to_string()]
+}
+
+fn default_key_toggle_hidden() -> Vec<String> {
+    vec!["H".to_string()]
 }
 
 fn default_key_quit() -> Vec<String> {

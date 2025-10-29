@@ -1,27 +1,30 @@
+use crate::blink::app::Preview;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use std::{
     fs, io,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileEntry {
     pub path: PathBuf,
     pub name: String,
+    pub preview: Arc<Mutex<Preview>>,
     pub size: u64,
     pub is_dir: bool,
 }
 
 #[cfg(windows)]
-fn is_system_or_hidden(metadata: &fs::Metadata) -> bool {
+fn is_system_file(metadata: &fs::Metadata) -> bool {
     const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
     let attrs = metadata.file_attributes();
     attrs & FILE_ATTRIBUTE_SYSTEM != 0
 }
 
 #[cfg(not(windows))]
-fn is_system_or_hidden(_metadata: &fs::Metadata) -> bool {
+fn is_system_file(_metadata: &fs::Metadata) -> bool {
     false
 }
 
@@ -43,8 +46,8 @@ pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>>
             Err(_) => continue,
         };
 
-        // Filter out Windows system files early
-        if is_system_or_hidden(&metadata) {
+        // filter out windows freaky system files
+        if is_system_file(&metadata) {
             continue;
         }
 
@@ -59,12 +62,14 @@ pub fn get_entries(show_hidden: bool, path: &Path) -> io::Result<Vec<FileEntry>>
         }
 
         let path = entry.path();
+        let preview = Arc::new(Mutex::new(Preview::default()));
         let is_dir = metadata.is_dir();
         let size = metadata.len();
 
         entries.push(FileEntry {
             path,
             name,
+            preview,
             is_dir,
             size,
         });
