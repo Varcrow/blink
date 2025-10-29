@@ -1,13 +1,6 @@
 <div align="center">
   
-```
-██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗
-██╔══██╗██║     ██║████╗  ██║██║ ██╔╝
-██████╔╝██║     ██║██╔██╗ ██║█████╔╝ 
-██╔══██╗██║     ██║██║╚██╗██║██╔═██╗ 
-██████╔╝███████╗██║██║ ╚████║██║  ██╗
-╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-```
+# blink
 
 <br>
 
@@ -25,7 +18,7 @@ A modern, intuitive file manager built in Rust that brings the speed of vim navi
 - **🎯 Visual Mode** - Select multiple files like in vim for batch operations
 - **🔖 Bookmarks** - Tag and instantly jump to your favorite directories
 - **📝 Editor Integration** - Open files in your $EDITOR (vim, nvim, nano, etc.)
-- **🎨 Configurable** - Customize appearance behavior and keybindings to your liking
+- **🎨 Configurable** - Customize appearance, behavior and keybindings to your liking
 - **🚀 Written in Rust** - Fast, safe, and reliable
 
 ## 📦 Installation
@@ -33,7 +26,7 @@ A modern, intuitive file manager built in Rust that brings the speed of vim navi
 ### Via Cargo (Recommended)
 
 ```bash
-cargo install --git https://github.com/Varcrow/blink.git
+cargo install blink
 ```
 
 ### From Source
@@ -53,7 +46,7 @@ Launch blink from your terminal:
 blink         # Opens blink at current directory
 ```
 
-## ⌨️ Default Keybindings
+## ⌨️ Getting Started
 
 ### Navigation
 | Key | Action |
@@ -101,8 +94,6 @@ blink         # Opens blink at current directory
 | `H` | Toggle hidden files |
 | `q` | Quit blink |
 
-## 📝 Tips & Tricks
-
 ### Creating Files vs Directories
 When using `m` to make a new entry:
 - **Without extension** → Creates a directory: `my-folder`
@@ -115,12 +106,27 @@ When using `m` to make a new entry:
 4. Navigate to destination
 5. Press `p` to paste
 
-### Editor Integration
-Set your preferred editor:
+## Editor Integration
+
+Set your preferred editor using environment variables:
+
+**For bash** (~/.bashrc):
 ```bash
-export EDITOR=nvim
-# or
-export VISUAL=code
+echo 'export EDITOR=nvim' >> ~/.bashrc
+source ~/.bashrc
+```
+**For zsh** (~/.zshrc):
+```bash
+echo 'export EDITOR=nvim' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**For PowerShell**
+```powershell
+# add to PowerShell profile
+notepad $PROFILE
+# Add this line to the file:
+$env:EDITOR = "nvim"
 ```
 
 Blink automatically detects terminal editors (vim, nvim, nano, emacs, micro, helix) and handles them properly.
