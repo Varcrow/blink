@@ -11,7 +11,12 @@ use ratatui::{
     widgets::{Clear, ListState},
 };
 use std::sync::{Arc, Mutex};
-use std::{fs, path::PathBuf, process::Command, time::Duration};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    time::Duration,
+};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub enum RunningState {
@@ -113,6 +118,7 @@ impl App {
         self.cwd = path;
         self.list_state.select(Some(0));
         self.update_all_entries();
+        self.preload_previews();
     }
 
     fn update_cwd_entries(&mut self) {
@@ -134,12 +140,19 @@ impl App {
             if let Some(entry) = self.cwd_entries.get(selected_idx) {
                 let path = entry.path.clone();
 
-                // don't start a new load if we're already loading this path
+                // Don't start new load if already loading this path
                 if self.preview_loading_path.as_ref() == Some(&path) {
                     return;
                 }
 
+                // Don't load if we just loaded something recently (debounce)
+                if self.last_preview_update.elapsed().as_millis() < self.debounce_time_ms {
+                    return;
+                }
+
                 self.preview_loading_path = Some(path.clone());
+                self.last_preview_update = std::time::Instant::now();
+
                 let is_dir = entry.is_dir;
                 let show_hidden = self.config.ui.show_hidden;
                 let preview = Arc::clone(&self.preview_contents);
@@ -150,6 +163,7 @@ impl App {
                             entries: get_entries(show_hidden, &path).unwrap_or_default(),
                         }
                     } else {
+                        // Check for image first
                         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                             let ext_lower = ext.to_lowercase();
                             if matches!(
@@ -165,18 +179,19 @@ impl App {
 
                         match fs::read(&path) {
                             Ok(bytes) => {
-                                let preview_bytes = if bytes.len() > 1_000_000 {
-                                    &bytes[..1_000_000]
-                                } else {
-                                    &bytes
-                                };
-
-                                let check_len = preview_bytes.len().min(8192);
-                                if preview_bytes[..check_len].contains(&0) {
+                                // Only check first 8KB for binary detection
+                                let check_len = bytes.len().min(8192);
+                                if bytes[..check_len].contains(&0) {
                                     Preview::Binary {
                                         info: format!("Binary file ({} bytes)", bytes.len()),
                                     }
                                 } else {
+                                    // Only keep first 1MB for preview
+                                    let preview_bytes = if bytes.len() > 1_000_000 {
+                                        &bytes[..1_000_000]
+                                    } else {
+                                        &bytes
+                                    };
                                     Preview::File {
                                         contents: String::from_utf8_lossy(preview_bytes)
                                             .to_string(),
@@ -198,6 +213,28 @@ impl App {
                     self.preview_loading_path = None;
                 }
             }
+        }
+    }
+
+    fn preload_previews(&mut self) {
+        let entries = self.cwd_entries.clone();
+
+        for (_, entry) in entries.iter().enumerate() {
+            let path = entry.path.clone();
+            let is_dir = entry.is_dir;
+            let preview = Arc::clone(&entry.preview);
+
+            // Only preload files, not directories (too expensive)
+            if is_dir {
+                continue;
+            }
+
+            let _ = self.thread_pool.try_execute(move || {
+                let new_preview = load_file_preview(&path);
+                if let Ok(mut p) = preview.lock() {
+                    *p = new_preview;
+                }
+            });
         }
     }
 
@@ -269,10 +306,7 @@ impl App {
         if self.visual_mode {
             self.update_visual_selection();
         }
-        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
-            self.update_preview_contents();
-            self.last_preview_update = std::time::Instant::now();
-        }
+        self.update_preview_contents();
     }
 
     pub fn move_cursor_up(&mut self) {
@@ -295,11 +329,7 @@ impl App {
         if self.visual_mode {
             self.update_visual_selection();
         }
-
-        if self.last_preview_update.elapsed().as_millis() > self.debounce_time_ms {
-            self.update_preview_contents();
-            self.last_preview_update = std::time::Instant::now();
-        }
+        self.update_preview_contents();
     }
 
     pub fn enter_current_path_selection(&mut self) {
@@ -468,5 +498,44 @@ impl App {
             self.is_cut = false;
             self.update_all_entries();
         }
+    }
+}
+
+fn load_file_preview(path: &Path) -> Preview {
+    // Check for images
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        let ext_lower = ext.to_lowercase();
+        if matches!(
+            ext_lower.as_str(),
+            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp"
+        ) {
+            return Preview::Image {
+                path: path.to_path_buf(),
+            };
+        }
+    }
+
+    // Read and check for binary
+    match fs::read(path) {
+        Ok(bytes) => {
+            let check_len = bytes.len().min(8192);
+            if bytes[..check_len].contains(&0) {
+                Preview::Binary {
+                    info: format!("Binary file ({} bytes)", bytes.len()),
+                }
+            } else {
+                let preview_bytes = if bytes.len() > 1_000_000 {
+                    &bytes[..1_000_000]
+                } else {
+                    &bytes
+                };
+                Preview::File {
+                    contents: String::from_utf8_lossy(preview_bytes).to_string(),
+                }
+            }
+        }
+        Err(_) => Preview::File {
+            contents: "[Cannot read file]".to_string(),
+        },
     }
 }
