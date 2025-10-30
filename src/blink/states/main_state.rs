@@ -105,6 +105,9 @@ impl State for MainState {
                 list_state: ListState::default(),
             });
         }
+        if kb.matches(key, &["V".to_string()]) {
+            todo!(); // Launch log state from here
+        }
 
         self
     }
