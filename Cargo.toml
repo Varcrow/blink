@@ -23,6 +23,7 @@ serde = { version = "1.0", features = ["derive"] }
 directories = "5.0"
 toml = "0.8"
 open = "5.3.2"
+zip = "6.0.0"
 
 [profile.release]
 strip = true

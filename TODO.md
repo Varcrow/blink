@@ -1,4 +1,5 @@
-- [] Tabs
-- [] Fix all artifacting
-- [] Compression and decompression
 - [x] Multi line select('V' key)
+- [] Tabs
+- [] Compression and decompression
+- [] Better previews for more stuff (zip, pdf, docx, images)
+- [] Fix artifacting
