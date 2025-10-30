@@ -1,3 +1,4 @@
+use crate::blink::archive::zip::create_zip_with_structure;
 use crate::blink::{
     bookmarks::Bookmarks,
     config::config::Config,
@@ -275,11 +276,11 @@ impl App {
     }
 
     pub fn jump_to_top(&mut self) {
-        self.list_state.select(Some(0)); 
+        self.list_state.select(Some(0));
     }
 
     pub fn jump_to_bottom(&mut self) {
-        self.list_state.select(Some(self.cwd_entries.len() - 1)); 
+        self.list_state.select(Some(self.cwd_entries.len() - 1));
     }
 
     pub fn toggle_hidden_file_visibility(&mut self) {
@@ -345,6 +346,23 @@ impl App {
         })?;
 
         Ok(())
+    }
+
+    pub fn archive_selection(&self) {
+        if self.visual_mode {
+            let paths: Vec<PathBuf> = self
+                .visual_selection
+                .iter()
+                .filter_map(|&idx| self.cwd_entries.get(idx))
+                .map(|entry| entry.path.clone())
+                .collect();
+
+            let status = create_zip_with_structure(paths, "testname.zip");
+            match status {
+                Ok(_) => todo!(),
+                Err(e) => eprintln!("Error: {}", e),
+            }
+        }
     }
 }
 

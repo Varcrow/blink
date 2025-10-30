@@ -33,6 +33,7 @@ fn detect_format(path: &Path) -> Option<CompressionFormat> {
         _ => None,
     }
 }
+
 fn is_compressed(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|s| s.to_str()),

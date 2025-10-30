@@ -17,6 +17,11 @@ impl State for MainState {
     fn handle_input(self: Box<Self>, key: KeyCode, app: &mut App) -> Box<dyn State> {
         let kb = &app.config.keybindings;
 
+        if kb.matches(key, &vec!["z".to_string()]) {
+            app.archive_selection();
+            return self;
+        }
+
         if kb.matches(key, &kb.quit) {
             app.running_state = RunningState::Done;
             return self;
