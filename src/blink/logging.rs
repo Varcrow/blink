@@ -5,7 +5,7 @@ pub enum Log {
 }
 
 pub struct LogManager {
-    session_logs: Vec<Log>,
+    pub session_logs: Vec<Log>,
 }
 
 impl LogManager {

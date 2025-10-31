@@ -1,6 +1,6 @@
 use crate::blink::{
     app::{App, Preview},
-    file_style::{get_file_color_enhanced, get_file_icon_enhanced},
+    file_style::{get_file_color_enhanced, get_file_icon_enhanced}, logging::Log,
 };
 use ratatui::{
     Frame,
@@ -282,16 +282,17 @@ pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState)
     let area = centered_rect(60, 60, frame.area());
 
     let items: Vec<ListItem> = app
-        .bookmarks
-        .list()
+        .log_manager
+        .session_logs
         .iter()
-        .map(|(name, entry)| {
-            let line = Line::from(vec![Span::raw(format!(
-                "{} {}: {}",
-                "\u{eaa5}".to_string(),
-                name,
-                entry.path.to_string_lossy()
-            ))]);
+        .map(|log| {
+            // TODO: Get log icons
+            let line: Line = match log {
+                Log::Info { message } => Line::from(vec![Span::raw(format!("icon {}", message))]),
+                Log::Warning { message } => Line::from(vec![Span::raw(format!("icon {}", message))]),
+                Log::Error { message } => Line::from(vec![Span::raw(format!("icon {}", message))]),
+            };
+
             ListItem::new(line)
         })
         .collect();
