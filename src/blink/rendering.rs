@@ -278,6 +278,42 @@ pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListS
     frame.render_stateful_widget(bookmark_list, area, list_state);
 }
 
+pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState) {
+    let area = centered_rect(60, 60, frame.area());
+
+    let items: Vec<ListItem> = app
+        .bookmarks
+        .list()
+        .iter()
+        .map(|(name, entry)| {
+            let line = Line::from(vec![Span::raw(format!(
+                "{} {}: {}",
+                "\u{eaa5}".to_string(),
+                name,
+                entry.path.to_string_lossy()
+            ))]);
+            ListItem::new(line)
+        })
+        .collect();
+
+    let bookmark_list = List::new(items)
+        .block(
+            Block::bordered()
+                .title("Bookmarks")
+                .title_alignment(Alignment::Center)
+                .border_type(app.config.ui.get_border_type())
+                .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color())),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(app.config.colors.selected_bg.to_ratatui_color())
+                .add_modifier(Modifier::BOLD),
+        );
+
+    frame.render_widget(Clear, area);
+    frame.render_stateful_widget(bookmark_list, area, list_state);
+}
+
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::vertical([
         Constraint::Percentage((100 - percent_y) / 2),
