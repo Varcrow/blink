@@ -198,7 +198,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     };
 
     let status = format!(
-        " 📁 {} dirs | 📄 {} files | {} ",
+        " \u{f07c} {} dirs | \u{f15b} {} files | {} ",
         dir_count, file_count, yank_status
     );
 
@@ -296,19 +296,13 @@ pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState)
         })
         .collect();
 
-    let bookmark_list = List::new(items)
-        .block(
-            Block::bordered()
-                .title("Bookmarks")
-                .title_alignment(Alignment::Center)
-                .border_type(app.config.ui.get_border_type())
-                .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color())),
-        )
-        .highlight_style(
-            Style::default()
-                .bg(app.config.colors.selected_bg.to_ratatui_color())
-                .add_modifier(Modifier::BOLD),
-        );
+    let bookmark_list = List::new(items).block(
+        Block::bordered()
+            .title("Session Logbook")
+            .title_alignment(Alignment::Center)
+            .border_type(app.config.ui.get_border_type())
+            .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color())),
+    );
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(bookmark_list, area, list_state);
