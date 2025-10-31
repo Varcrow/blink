@@ -1,7 +1,8 @@
 use crate::blink::{
     bookmarks::Bookmarks,
     config::config::Config,
-    entries::{FileEntry, get_entries},
+    entries::{get_entries, FileEntry},
+    logging::{Log, LogManager},
     operations::OperationManager,
     states::{main_state::MainState, state_trait::State},
     thread_pool::ThreadPool,
@@ -45,6 +46,7 @@ pub struct App {
     pub running_state: RunningState,
     pub state: Box<dyn State>,
     pub operation_manager: OperationManager,
+    pub log_manager: LogManager,
     thread_pool: ThreadPool,
     pub list_state: ListState,
     pub cwd: PathBuf,
@@ -76,6 +78,7 @@ impl App {
             visual_anchor: None,
             visual_selection: Vec::new(),
             operation_manager: OperationManager::new(50)?,
+            log_manager: LogManager::new(),
             thread_pool: ThreadPool::new(1, 1024),
             bookmarks,
             config,
@@ -86,6 +89,12 @@ impl App {
 
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
+
+        //DEBUG
+        self.log_manager.add_log(Log::Info {
+            message: "Initialize log".to_string(),
+        });
+
         while self.running_state != RunningState::Done {
             terminal.draw(|frame| {
                 frame.render_widget(Clear, frame.area());
@@ -275,11 +284,11 @@ impl App {
     }
 
     pub fn jump_to_top(&mut self) {
-        self.list_state.select(Some(0)); 
+        self.list_state.select(Some(0));
     }
 
     pub fn jump_to_bottom(&mut self) {
-        self.list_state.select(Some(self.cwd_entries.len() - 1)); 
+        self.list_state.select(Some(self.cwd_entries.len() - 1));
     }
 
     pub fn toggle_hidden_file_visibility(&mut self) {
