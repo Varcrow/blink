@@ -290,15 +290,15 @@ pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState)
             let line: Line = match log {
                 Log::Info { message } => Line::from(Span::styled(
                     format!("\u{ea74} {}", message),
-                    Style::default().fg(Color::Cyan),
+                    Style::default().fg(app.config.colors.log_info.to_ratatui_color()),
                 )),
                 Log::Warning { message } => Line::from(Span::styled(
                     format!("\u{ea6c} {}", message),
-                    Style::default().fg(Color::Yellow),
+                    Style::default().fg(app.config.colors.log_warning.to_ratatui_color()),
                 )),
                 Log::Error { message } => Line::from(Span::styled(
                     format!("\u{ea87} {}", message),
-                    Style::default().fg(Color::Red),
+                    Style::default().fg(app.config.colors.log_error.to_ratatui_color()),
                 )),
             };
 
