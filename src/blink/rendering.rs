@@ -194,7 +194,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     } else if app.yanked_entry_paths.is_some() {
         "[Yanked]"
     } else {
-        "[Clear]"
+        ""
     };
 
     let status = format!(
