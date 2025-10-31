@@ -1,11 +1,12 @@
 use crate::blink::{
     app::{App, Preview},
-    file_style::{get_file_color_enhanced, get_file_icon_enhanced}, logging::Log,
+    file_style::{get_file_color_enhanced, get_file_icon_enhanced},
+    logging::Log,
 };
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
@@ -286,11 +287,19 @@ pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState)
         .session_logs
         .iter()
         .map(|log| {
-            // TODO: Get log icons
             let line: Line = match log {
-                Log::Info { message } => Line::from(vec![Span::raw(format!("icon {}", message))]),
-                Log::Warning { message } => Line::from(vec![Span::raw(format!("icon {}", message))]),
-                Log::Error { message } => Line::from(vec![Span::raw(format!("icon {}", message))]),
+                Log::Info { message } => Line::from(Span::styled(
+                    format!("\u{ea74} {}", message),
+                    Style::default().fg(Color::Cyan),
+                )),
+                Log::Warning { message } => Line::from(Span::styled(
+                    format!("\u{ea6c} {}", message),
+                    Style::default().fg(Color::Yellow),
+                )),
+                Log::Error { message } => Line::from(Span::styled(
+                    format!("\u{ea87} {}", message),
+                    Style::default().fg(Color::Red),
+                )),
             };
 
             ListItem::new(line)

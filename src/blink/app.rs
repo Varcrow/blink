@@ -1,7 +1,7 @@
 use crate::blink::{
     bookmarks::Bookmarks,
     config::config::Config,
-    entries::{get_entries, FileEntry},
+    entries::{FileEntry, get_entries},
     logging::{Log, LogManager},
     operations::OperationManager,
     states::{main_state::MainState, state_trait::State},
@@ -92,7 +92,13 @@ impl App {
 
         //DEBUG
         self.log_manager.add_log(Log::Info {
-            message: "Initialize log".to_string(),
+            message: "This is info".to_string(),
+        });
+        self.log_manager.add_log(Log::Warning {
+            message: "This is a warning".to_string(),
+        });
+        self.log_manager.add_log(Log::Error {
+            message: "ABORT ABORT".to_string(),
         });
 
         while self.running_state != RunningState::Done {
