@@ -90,17 +90,6 @@ impl App {
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
 
-        //DEBUG
-        self.log_manager.add_log(Log::Info {
-            message: "This is info".to_string(),
-        });
-        self.log_manager.add_log(Log::Warning {
-            message: "This is a warning".to_string(),
-        });
-        self.log_manager.add_log(Log::Error {
-            message: "ABORT ABORT".to_string(),
-        });
-
         while self.running_state != RunningState::Done {
             terminal.draw(|frame| {
                 frame.render_widget(Clear, frame.area());
