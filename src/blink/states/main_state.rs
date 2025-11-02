@@ -2,11 +2,7 @@ use crate::blink::{
     app::{App, RunningState},
     rendering::render_app,
     states::{
-        bookmark_states::{BookmarkListState, NewBookmarkState},
-        new_path_state::NewPathState,
-        rename_path_state::RenamePathState,
-        state_trait::State,
-        visual_selection_states::VisualSelectionState,
+        bookmark_states::{BookmarkListState, NewBookmarkState}, log_state::LogState, new_path_state::NewPathState, rename_path_state::RenamePathState, state_trait::State, visual_selection_states::VisualSelectionState
     },
 };
 use ratatui::{Frame, crossterm::event::KeyCode, widgets::ListState};
@@ -102,6 +98,11 @@ impl State for MainState {
         }
         if kb.matches(key, &kb.bookmark_list) {
             return Box::new(BookmarkListState {
+                list_state: ListState::default(),
+            });
+        }
+        if kb.matches(key, &["L".to_string()]) {
+            return Box::new(LogState {
                 list_state: ListState::default(),
             });
         }

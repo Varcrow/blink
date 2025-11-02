@@ -56,6 +56,14 @@ pub struct ColorScheme {
     pub prompt_bg: ColorConfig,
     #[serde(default = "default_prompt_border")]
     pub prompt_border: ColorConfig,
+
+    // Log colors
+    #[serde(default = "default_log_info")]
+    pub log_info: ColorConfig,
+    #[serde(default = "default_log_warning")]
+    pub log_warning: ColorConfig,
+    #[serde(default = "default_log_error")]
+    pub log_error: ColorConfig,
 }
 
 // Default functions for directories
@@ -154,6 +162,17 @@ fn default_prompt_border() -> ColorConfig {
     ColorConfig::Named("white".to_string())
 }
 
+// Default functions for logs
+fn default_log_info() -> ColorConfig {
+    ColorConfig::Named("cyan".to_string())
+}
+fn default_log_warning() -> ColorConfig {
+    ColorConfig::Named("yellow".to_string())
+}
+fn default_log_error() -> ColorConfig {
+    ColorConfig::Named("red".to_string())
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum ColorConfig {
@@ -214,6 +233,9 @@ impl Default for ColorScheme {
             status_bar: default_status_bar(),
             prompt_bg: default_prompt_bg(),
             prompt_border: default_prompt_border(),
+            log_info: default_log_info(),
+            log_warning: default_log_warning(),
+            log_error: default_log_error(),
         }
     }
 }

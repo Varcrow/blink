@@ -1,6 +1,7 @@
 use crate::blink::{
     app::{App, Preview},
     file_style::{get_file_color_enhanced, get_file_icon_enhanced},
+    logging::Log,
 };
 use ratatui::{
     Frame,
@@ -194,11 +195,11 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
     } else if app.yanked_entry_paths.is_some() {
         "[Yanked]"
     } else {
-        "[Clear]"
+        ""
     };
 
     let status = format!(
-        " 📁 {} dirs | 📄 {} files | {} ",
+        " \u{f07c} {} dirs | \u{f15b} {} files | {} ",
         dir_count, file_count, yank_status
     );
 
@@ -273,6 +274,45 @@ pub fn render_bookmark_list(app: &App, frame: &mut Frame, list_state: &mut ListS
                 .bg(app.config.colors.selected_bg.to_ratatui_color())
                 .add_modifier(Modifier::BOLD),
         );
+
+    frame.render_widget(Clear, area);
+    frame.render_stateful_widget(bookmark_list, area, list_state);
+}
+
+pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState) {
+    let area = centered_rect(60, 60, frame.area());
+
+    let items: Vec<ListItem> = app
+        .log_manager
+        .session_logs
+        .iter()
+        .map(|log| {
+            let line: Line = match log {
+                Log::Info { message } => Line::from(Span::styled(
+                    format!("\u{ea74} {}", message),
+                    Style::default().fg(app.config.colors.log_info.to_ratatui_color()),
+                )),
+                Log::Warning { message } => Line::from(Span::styled(
+                    format!("\u{ea6c} {}", message),
+                    Style::default().fg(app.config.colors.log_warning.to_ratatui_color()),
+                )),
+                Log::Error { message } => Line::from(Span::styled(
+                    format!("\u{ea87} {}", message),
+                    Style::default().fg(app.config.colors.log_error.to_ratatui_color()),
+                )),
+            };
+
+            ListItem::new(line)
+        })
+        .collect();
+
+    let bookmark_list = List::new(items).block(
+        Block::bordered()
+            .title("Session Logbook")
+            .title_alignment(Alignment::Center)
+            .border_type(app.config.ui.get_border_type())
+            .style(Style::default().fg(app.config.colors.status_bar.to_ratatui_color())),
+    );
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(bookmark_list, area, list_state);

@@ -2,6 +2,7 @@ use crate::blink::{
     bookmarks::Bookmarks,
     config::config::Config,
     entries::{FileEntry, get_entries},
+    logging::{Log, LogManager},
     operations::OperationManager,
     states::{main_state::MainState, state_trait::State},
     thread_pool::ThreadPool,
@@ -45,6 +46,7 @@ pub struct App {
     pub running_state: RunningState,
     pub state: Box<dyn State>,
     pub operation_manager: OperationManager,
+    pub log_manager: LogManager,
     thread_pool: ThreadPool,
     pub list_state: ListState,
     pub cwd: PathBuf,
@@ -76,6 +78,7 @@ impl App {
             visual_anchor: None,
             visual_selection: Vec::new(),
             operation_manager: OperationManager::new(50)?,
+            log_manager: LogManager::new(),
             thread_pool: ThreadPool::new(1, 1024),
             bookmarks,
             config,
@@ -86,6 +89,7 @@ impl App {
 
     pub fn run(&mut self) -> color_eyre::Result<()> {
         let mut terminal = ratatui::init();
+
         while self.running_state != RunningState::Done {
             terminal.draw(|frame| {
                 frame.render_widget(Clear, frame.area());
@@ -258,12 +262,18 @@ impl App {
         self.bookmarks.save()
     }
 
-    pub fn delete_bookmark(&mut self, index: usize) -> color_eyre::Result<()> {
+    pub fn delete_bookmark(&mut self, index: usize) {
         if let Some((tag, _)) = self.bookmarks.list().get(index) {
             self.bookmarks.remove(tag.to_string());
-            let _ = self.bookmarks.save();
+            match self.bookmarks.save() {
+                Ok(_) => self.log_manager.add_log(Log::Info {
+                    message: "Saved bookmarks".to_string(),
+                }),
+                Err(e) => self.log_manager.add_log(Log::Error {
+                    message: format!("{}", e),
+                }),
+            }
         }
-        Ok(())
     }
 
     pub fn jump_to_bookmark(&mut self, index: usize) {
@@ -275,11 +285,11 @@ impl App {
     }
 
     pub fn jump_to_top(&mut self) {
-        self.list_state.select(Some(0)); 
+        self.list_state.select(Some(0));
     }
 
     pub fn jump_to_bottom(&mut self) {
-        self.list_state.select(Some(self.cwd_entries.len() - 1)); 
+        self.list_state.select(Some(self.cwd_entries.len() - 1));
     }
 
     pub fn toggle_hidden_file_visibility(&mut self) {
@@ -363,9 +373,14 @@ impl App {
     pub fn rename_current_selected_path(&mut self, new_name: &str) {
         if let Some(i) = self.list_state.selected() {
             if let Some(entry) = self.cwd_entries.get(i) {
-                _ = self
-                    .operation_manager
-                    .rename_file(entry.path.clone(), self.cwd.join(new_name));
+                let src = entry.path.clone();
+                let dst = self.cwd.join(new_name);
+                match self.operation_manager.rename_file(src, dst) {
+                    Ok(_) => self.log_manager.add_log(Log::Info {
+                        message: format!("Renamed {} to {}", src.file_name().unwrap(), dst.file_name().unwrap()),
+                    }),
+                    Err(_) => todo!(),
+                }
                 self.update_all_entries();
             }
         }
