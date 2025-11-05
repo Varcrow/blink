@@ -375,12 +375,7 @@ impl App {
             if let Some(entry) = self.cwd_entries.get(i) {
                 let src = entry.path.clone();
                 let dst = self.cwd.join(new_name);
-                match self.operation_manager.rename_file(src, dst) {
-                    Ok(_) => self.log_manager.add_log(Log::Info {
-                        message: format!("Renamed {} to {}", src.file_name().unwrap(), dst.file_name().unwrap()),
-                    }),
-                    Err(_) => todo!(),
-                }
+                self.operation_manager.rename_file(src, dst);
                 self.update_all_entries();
             }
         }
