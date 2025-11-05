@@ -18,6 +18,10 @@ impl State for LogState {
         }
 
         if kb.matches(key, &kb.move_up) {
+            if app.log_manager.session_logs.len() == 0 {
+                return self;
+            }
+
             let i = match self.list_state.selected() {
                 Some(i) => {
                     if i == 0 {
@@ -28,11 +32,16 @@ impl State for LogState {
                 }
                 _ => 0,
             };
+
             self.list_state.select(Some(i));
             return self;
         }
 
         if kb.matches(key, &kb.move_down) {
+            if app.log_manager.session_logs.len() == 0 {
+                return self;
+            }
+
             let i = match self.list_state.selected() {
                 Some(i) => {
                     if i >= app.log_manager.session_logs.len() - 1 {
@@ -43,6 +52,7 @@ impl State for LogState {
                 }
                 _ => 0,
             };
+
             self.list_state.select(Some(i));
             return self;
         }
