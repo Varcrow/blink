@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use crate::blink::{
     app::{App, Preview},
+    entries::FileEntry,
     file_style::{get_file_color_enhanced, get_file_icon_enhanced},
     logging::Log,
 };
@@ -8,7 +11,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Clear, List, ListItem, ListState, Paragraph, Widget},
 };
 
 pub fn render_app(app: &App, frame: &mut Frame) {
@@ -137,54 +140,14 @@ fn render_preview_dir(app: &App, frame: &mut Frame, area: Rect) {
         }
     };
 
-    match preview {
-        Preview::File { contents } => {
-            let file_contents = Paragraph::new(contents).block(
-                Block::bordered()
-                    .border_type(app.config.ui.get_border_type())
-                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
-            );
-            frame.render_widget(Clear, area);
-            frame.render_widget(file_contents, area);
-        }
-        Preview::Directory { entries } => {
-            let preview_contents: Vec<ListItem> = entries
-                .iter()
-                .map(|entry| {
-                    let icon = get_file_icon_enhanced(entry);
-                    let style = Style::default().fg(get_file_color_enhanced(entry));
-                    let entry_str = format!("{} {}", icon, entry.name);
-                    let line = Line::from(vec![Span::styled(entry_str, style)]);
-                    ListItem::new(line)
-                })
-                .collect();
-            let preview_list = List::new(preview_contents).block(
-                Block::bordered()
-                    .border_type(app.config.ui.get_border_type())
-                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
-            );
-            frame.render_widget(Clear, area);
-            frame.render_widget(preview_list, area);
-        }
-        Preview::Image { path } => {
-            let content = Paragraph::new(path.display().to_string()).block(
-                Block::bordered()
-                    .border_type(app.config.ui.get_border_type())
-                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
-            );
-            frame.render_widget(Clear, area);
-            frame.render_widget(content, area);
-        }
-        Preview::Binary { info } => {
-            let content = Paragraph::new(info).block(
-                Block::bordered()
-                    .border_type(app.config.ui.get_border_type())
-                    .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
-            );
-            frame.render_widget(Clear, area);
-            frame.render_widget(content, area);
-        }
-    }
+    let widget = match preview {
+        Preview::File { contents } => file_preview_widget(app, contents),
+        Preview::Directory { entries } => directory_preview_widget(app, entries),
+        Preview::Image { path } => image_preview_widget(app, path),
+        Preview::Binary { info } => binary_preview_widget(app, info),
+    };
+    frame.render_widget(Clear, area);
+    frame.render_widget(widget, area);
 }
 
 fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
@@ -316,6 +279,48 @@ pub fn render_log_list(app: &App, frame: &mut Frame, list_state: &mut ListState)
 
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(bookmark_list, area, list_state);
+}
+
+pub fn file_preview_widget(app: &App, contents: String) -> impl Widget {
+    Paragraph::new(contents).block(
+        Block::bordered()
+            .border_type(app.config.ui.get_border_type())
+            .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+    )
+}
+
+pub fn directory_preview_widget(app: &App, entries: Vec<FileEntry>) -> impl Widget {
+    let preview_contents: Vec<ListItem> = entries
+        .iter()
+        .map(|entry| {
+            let icon = get_file_icon_enhanced(entry);
+            let style = Style::default().fg(get_file_color_enhanced(entry));
+            let entry_str = format!("{} {}", icon, entry.name);
+            let line = Line::from(vec![Span::styled(entry_str, style)]);
+            ListItem::new(line)
+        })
+        .collect();
+    List::new(preview_contents).block(
+        Block::bordered()
+            .border_type(app.config.ui.get_border_type())
+            .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+    )
+}
+
+pub fn image_preview_widget(app: &App, path: PathBuf) -> impl Widget {
+    Paragraph::new(path.display().to_string()).block(
+        Block::bordered()
+            .border_type(app.config.ui.get_border_type())
+            .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+    )
+}
+
+pub fn binary_preview_widget(app: &App, info: String) -> impl Widget {
+    Paragraph::new(info).block(
+        Block::bordered()
+            .border_type(app.config.ui.get_border_type())
+            .border_style(Style::default().fg(app.config.colors.border.to_ratatui_color())),
+    )
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
