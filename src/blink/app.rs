@@ -135,7 +135,7 @@ impl App {
             let is_dir = entry.is_dir;
             let preview = Arc::clone(&entry.preview);
 
-            let _ = self.thread_pool.try_execute(move || {
+            let status = self.thread_pool.try_execute(move || {
                 let new_preview = if is_dir {
                     load_directory_preview(true, &path)
                 } else {
@@ -145,6 +145,15 @@ impl App {
                     *p = new_preview;
                 }
             });
+
+            match status {
+                Ok(_) => {}
+                Err(e) => {
+                    self.log_manager.add_log(Log::Error {
+                        message: format!("Failed to load a preview {}", e),
+                    });
+                }
+            }
         }
     }
 
@@ -267,10 +276,10 @@ impl App {
             self.bookmarks.remove(tag.to_string());
             match self.bookmarks.save() {
                 Ok(_) => self.log_manager.add_log(Log::Info {
-                    message: "Saved bookmarks".to_string(),
+                    message: format!("Deleted bookmark"),
                 }),
                 Err(e) => self.log_manager.add_log(Log::Error {
-                    message: format!("{}", e),
+                    message: format!("Failed to delete bookmark: {}", e),
                 }),
             }
         }
@@ -361,12 +370,29 @@ impl App {
 // Operation functions
 impl App {
     pub fn undo_last_operation(&mut self) {
-        _ = self.operation_manager.undo();
+        let status = self.operation_manager.undo();
+        match status {
+            Ok(_) => {}
+            Err(e) => {
+                self.log_manager.add_log(Log::Error {
+                    message: format!("Failed to undo last operation: {}", e),
+                });
+            }
+        }
+
         self.update_all_entries();
     }
 
     pub fn create_file(&mut self, name: &str) {
-        _ = self.operation_manager.create_file(self.cwd.join(name));
+        let status = self.operation_manager.create_file(self.cwd.join(name));
+        match status {
+            Ok(_) => {}
+            Err(e) => {
+                self.log_manager.add_log(Log::Error {
+                    message: format!("Failed to create file: {}", e),
+                });
+            }
+        }
         self.update_all_entries();
     }
 
@@ -375,8 +401,27 @@ impl App {
             if let Some(entry) = self.cwd_entries.get(i) {
                 let src = entry.path.clone();
                 let dst = self.cwd.join(new_name);
-                self.operation_manager.rename_file(src, dst);
-                self.update_all_entries();
+                if dst.exists() {
+                    self.log_manager.add_log(Log::Error {
+                        message: format!(
+                            "Failed to rename {:?} to {:?}: Path already exists",
+                            src.file_name(),
+                            dst.file_name(),
+                        ),
+                    });
+                    return;
+                }
+                let status = self.operation_manager.rename_file(src, dst);
+                match status {
+                    Ok(_) => {
+                        self.update_all_entries();
+                    }
+                    Err(e) => {
+                        self.log_manager.add_log(Log::Error {
+                            message: format!("Failed to rename selected file: {}", e),
+                        });
+                    }
+                }
             }
         }
     }
